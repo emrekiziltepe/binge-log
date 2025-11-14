@@ -307,43 +307,98 @@ const DailyFlowScreen = () => {
   const loadActivities = async () => {
     try {
       const user = getCurrentUser();
+      const dateKey = currentDate.toISOString().split('T')[0];
+      
       if (!user) {
         // Only fetch from AsyncStorage for non-logged-in users
-      const dateKey = currentDate.toISOString().split('T')[0];
-      const storedActivities = await AsyncStorage.getItem(`activities_${dateKey}`);
-      if (storedActivities) {
-          const parsedActivities = JSON.parse(storedActivities);
-          // Duplicate check
-          const uniqueActivities = removeDuplicates(parsedActivities);
-          setActivities(uniqueActivities);
-      } else {
-        setActivities([]);
+        const storedActivities = await AsyncStorage.getItem(`activities_${dateKey}`);
+        let parsedActivities = [];
+        if (storedActivities) {
+          parsedActivities = JSON.parse(storedActivities);
         }
+        
+        // Filter activities: only show goals if their date matches currentDate
+        const filteredActivities = parsedActivities.filter(activity => {
+          const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
+          activityDate.setHours(0, 0, 0, 0);
+          const currentDateOnly = new Date(currentDate);
+          currentDateOnly.setHours(0, 0, 0, 0);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isFutureDate = activityDate > today;
+          const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+          
+          // If it's a goal, only show it if the activity date matches current date
+          if (isGoal) {
+            return activityDate.getTime() === currentDateOnly.getTime();
+          }
+          // If it's not a goal, show it if it matches current date
+          return activity.date === dateKey;
+        });
+        
+        const uniqueActivities = removeDuplicates(filteredActivities);
+        setActivities(uniqueActivities);
         return;
       }
 
-      const dateKey = currentDate.toISOString().split('T')[0];
       const userSpecificKey = `activities_${user.uid}_${dateKey}`;
       
-      // Only fetch from Firebase for logged-in users
+      // Fetch from Firebase for logged-in users
       try {
         const firebaseActivities = await getActivitiesFromFirebase(currentDate);
-        // Duplicate check
-        const uniqueActivities = removeDuplicates(firebaseActivities);
+        
+        // Filter activities: only show goals if their date matches currentDate
+        const filteredActivities = firebaseActivities.filter(activity => {
+          const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
+          activityDate.setHours(0, 0, 0, 0);
+          const currentDateOnly = new Date(currentDate);
+          currentDateOnly.setHours(0, 0, 0, 0);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isFutureDate = activityDate > today;
+          const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+          
+          // If it's a goal, only show it if the activity date matches current date
+          if (isGoal) {
+            return activityDate.getTime() === currentDateOnly.getTime();
+          }
+          // If it's not a goal, show it if it matches current date
+          return activity.date === dateKey;
+        });
+        
+        const uniqueActivities = removeDuplicates(filteredActivities);
         setActivities(uniqueActivities);
         // Also save Firebase data to AsyncStorage (for offline backup)
-        await AsyncStorage.setItem(userSpecificKey, JSON.stringify(uniqueActivities));
+        await AsyncStorage.setItem(userSpecificKey, JSON.stringify(firebaseActivities));
       } catch (firebaseError) {
         // Only fetch from AsyncStorage if Firebase fails
         const storedActivities = await AsyncStorage.getItem(userSpecificKey);
+        let parsedActivities = [];
         if (storedActivities) {
-          const parsedActivities = JSON.parse(storedActivities);
-          // Duplicate check
-          const uniqueActivities = removeDuplicates(parsedActivities);
-          setActivities(uniqueActivities);
-        } else {
-          setActivities([]);
+          parsedActivities = JSON.parse(storedActivities);
         }
+        
+        // Filter activities: only show goals if their date matches currentDate
+        const filteredActivities = parsedActivities.filter(activity => {
+          const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
+          activityDate.setHours(0, 0, 0, 0);
+          const currentDateOnly = new Date(currentDate);
+          currentDateOnly.setHours(0, 0, 0, 0);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isFutureDate = activityDate > today;
+          const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+          
+          // If it's a goal, only show it if the activity date matches current date
+          if (isGoal) {
+            return activityDate.getTime() === currentDateOnly.getTime();
+          }
+          // If it's not a goal, show it if it matches current date
+          return activity.date === dateKey;
+        });
+        
+        const uniqueActivities = removeDuplicates(filteredActivities);
+        setActivities(uniqueActivities);
       }
     } catch (error) {
       console.error('Error loading activities:', error);
@@ -525,11 +580,31 @@ const DailyFlowScreen = () => {
     return `${t('activity.season')} ${season}, ${t('activity.episode')}: ${episodeText}`;
   };
 
-  // Group activities by category
+  // Group activities by category and separate goals
   const groupActivitiesByCategory = () => {
-    const grouped = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const regularActivities = [];
+    const goalActivities = [];
     
     activities.forEach(activity => {
+      const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
+      activityDate.setHours(0, 0, 0, 0);
+      const isFutureDate = activityDate > today;
+      const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+      
+      if (isGoal) {
+        goalActivities.push(activity);
+      } else {
+        regularActivities.push(activity);
+      }
+    });
+    
+    const grouped = {};
+    
+    // Group regular activities by category
+    regularActivities.forEach(activity => {
       const category = activity.type;
       if (!grouped[category]) {
         grouped[category] = [];
@@ -544,6 +619,11 @@ const DailyFlowScreen = () => {
     sortedCategories.forEach(category => {
       result[category] = grouped[category];
     });
+    
+    // Add goals section if there are goal activities
+    if (goalActivities.length > 0) {
+      result['_goals'] = goalActivities;
+    }
     
     return result;
   };
@@ -692,6 +772,17 @@ const DailyFlowScreen = () => {
       detail = seasonEpisodeStrings.join(';');
     }
 
+    // Use current date for the activity
+    const activityDate = currentDate;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const activityDateOnly = new Date(activityDate);
+    activityDateOnly.setHours(0, 0, 0, 0);
+    const isFutureDate = activityDateOnly > today;
+    
+    // If activity is completed or date is today/past, it's not a goal
+    const isGoal = isFutureDate && !formData.isCompleted;
+
     const newActivity = {
       id: editingActivity ? editingActivity.id : Date.now().toString(),
       title: formData.title.trim(),
@@ -700,7 +791,8 @@ const DailyFlowScreen = () => {
       isCompleted: formData.isCompleted,
       rating: formData.rating,
       timestamp: editingActivity ? editingActivity.timestamp : new Date().toISOString(),
-      date: currentDate.toISOString().split('T')[0],
+      date: activityDate.toISOString().split('T')[0],
+      isGoal: isGoal
     };
 
     try {
@@ -942,6 +1034,52 @@ const DailyFlowScreen = () => {
     );
   };
 
+  // Handle goal completion (long press on goal activity)
+  const handleGoalComplete = async (activity) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
+    activityDate.setHours(0, 0, 0, 0);
+    
+    // Check if activity date is today or in the past
+    if (activityDate <= today) {
+      try {
+        // Update activity: move to today and remove goal status
+        const updatedActivity = {
+          ...activity,
+          date: today.toISOString().split('T')[0],
+          isGoal: false
+        };
+
+        // Update in Firebase
+        await updateActivityInFirebase(activity.id, updatedActivity);
+
+        // Update local state
+        const updatedActivities = activities.map(a => 
+          a.id === activity.id ? updatedActivity : a
+        );
+        
+        const uniqueActivities = removeDuplicates(updatedActivities);
+        setActivities(uniqueActivities);
+        saveActivities(uniqueActivities);
+        calculateStreak();
+        
+        Alert.alert(
+          t('activity.completedGoal'),
+          t('activity.goalCompletedMessage', { title: activity.title })
+        );
+      } catch (error) {
+        console.error('Error completing goal:', error);
+        Alert.alert(t('errors.error'), t('errors.saveError'));
+      }
+    } else {
+      Alert.alert(
+        t('activity.isGoal'),
+        t('activity.goalNotYetDue', { date: activityDate.toLocaleDateString(i18n.language === 'tr' ? 'tr-TR' : 'en-US') })
+      );
+    }
+  };
+
 
   const navigateDate = (direction) => {
     const newDate = new Date(currentDate);
@@ -990,7 +1128,8 @@ const DailyFlowScreen = () => {
           </View>
         ) : (
           Object.entries(groupActivitiesByCategory()).map(([categoryKey, categoryActivities]) => {
-            const category = CATEGORIES[categoryKey];
+            const isGoalsSection = categoryKey === '_goals';
+            const category = isGoalsSection ? null : CATEGORIES[categoryKey];
             
             return (
               <View key={categoryKey} style={styles.categoryGroup}>
@@ -1001,7 +1140,9 @@ const DailyFlowScreen = () => {
                 >
                   <View style={styles.categoryContent}>
                     <View style={styles.categoryLeftGroup}>
-                      <Text style={styles.categoryTitle}>{category.name}</Text>
+                      <Text style={styles.categoryTitle}>
+                        {isGoalsSection ? `🎯 ${t('activity.isGoal')}` : category.name}
+                      </Text>
                       <Text style={styles.categoryCount}>{categoryActivities.length}</Text>
                       <Text style={styles.categoryArrow}>
                         {collapsedCategories[categoryKey] ? '+' : '−'}
@@ -1013,6 +1154,8 @@ const DailyFlowScreen = () => {
                 
                 {/* Kategori Aktivite Listesi */}
                 {!collapsedCategories[categoryKey] && categoryActivities.map((activity) => {
+                  // For goals, get category from activity
+                  const activityCategory = isGoalsSection ? CATEGORIES[activity.type] : category;
                   const isSwiped = swipedActivityId === activity.id;
                   const isDeleting = deletingActivityId === activity.id;
                   const panResponder = createSwipePanResponder(activity);
@@ -1022,7 +1165,7 @@ const DailyFlowScreen = () => {
                     <ActivityCard
                       key={activity.id}
                       activity={activity}
-                      category={category}
+                      category={activityCategory}
                       isSwiped={isSwiped}
                       isDeleting={isDeleting}
                       panResponder={panResponder}
@@ -1044,6 +1187,7 @@ const DailyFlowScreen = () => {
                             }
                           }}
                       onSwipeDelete={() => handleSwipeDelete(activity)}
+                      onLongPress={handleGoalComplete}
                     />
                   );
                 })}

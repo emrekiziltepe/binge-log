@@ -81,7 +81,14 @@
     "totalPages": "Toplam {{pages}} sayfa",
     "seriesDetail": "Dizi Detayı",
     "bookDetail": "Kitap Detayı",
-    "episodePlaceholder": "4 veya 4,5,6"
+    "episodePlaceholder": "4 veya 4,5,6",
+    "activityDate": "Aktivite Tarihi",
+    "selectDate": "Tarih Seç",
+    "isGoal": "Hedef",
+    "goalDescription": "Gelecek tarihli aktiviteler hedef olarak gösterilecek",
+    "completedGoal": "Tamamlanan Hedef",
+    "goalCompletedMessage": "{{title}} bugünün aktivitelerine taşındı",
+    "goalNotYetDue": "Bu hedef {{date}} tarihine planlanmış. Tarih geldiğinde basılı tutarak tamamlayabilirsiniz."
   },
   "dailyFlow": {
     "today": "Bugün",

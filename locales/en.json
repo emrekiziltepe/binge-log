@@ -81,7 +81,14 @@
     "totalPages": "Total {{pages}} pages",
     "seriesDetail": "Series Detail",
     "bookDetail": "Book Detail",
-    "episodePlaceholder": "4 or 4,5,6"
+    "episodePlaceholder": "4 or 4,5,6",
+    "activityDate": "Activity Date",
+    "selectDate": "Select Date",
+    "isGoal": "Goal",
+    "goalDescription": "Activities scheduled for future dates will be shown as goals",
+    "completedGoal": "Completed Goal",
+    "goalCompletedMessage": "{{title}} has been moved to today's activities",
+    "goalNotYetDue": "This goal is scheduled for {{date}}. Long press when the date arrives to complete it."
   },
   "dailyFlow": {
     "today": "Today",

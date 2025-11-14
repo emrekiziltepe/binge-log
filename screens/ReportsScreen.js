@@ -67,10 +67,16 @@ export default function ReportsScreen({ navigation }) {
         day.setDate(weekStart.getDate() + i);
         const dateKey = day.toISOString().split('T')[0];
         
-        // Filter activities for this specific date
+        // Filter activities for this specific date, exclude goals
         const dayActivities = activities.filter(activity => {
           const activityDate = activity.date || new Date(activity.timestamp).toISOString().split('T')[0];
-          return activityDate === dateKey;
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const activityDateObj = activity.date ? new Date(activity.date + 'T00:00:00') : new Date(activity.timestamp);
+          activityDateObj.setHours(0, 0, 0, 0);
+          const isFutureDate = activityDateObj > today;
+          const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+          return activityDate === dateKey && !isGoal;
         });
         
         weekData[dateKey] = {

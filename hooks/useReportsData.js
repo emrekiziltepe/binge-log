@@ -9,11 +9,20 @@ export const useWeeklyCategoryData = (weeklyData, t) => {
   return useMemo(() => {
     const categoryData = {};
     
-    // Get all activities from weeklyData state
+    // Get all activities from weeklyData state, exclude goals
     const allWeekActivities = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     Object.values(weeklyData).forEach(dayData => {
       if (dayData.activities) {
-        allWeekActivities.push(...dayData.activities);
+        const filteredActivities = dayData.activities.filter(activity => {
+          const activityDateObj = activity.date ? new Date(activity.date + 'T00:00:00') : new Date(activity.timestamp);
+          activityDateObj.setHours(0, 0, 0, 0);
+          const isFutureDate = activityDateObj > today;
+          const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+          return !isGoal;
+        });
+        allWeekActivities.push(...filteredActivities);
       }
     });
     
@@ -70,7 +79,13 @@ export const useMonthlyCategoryData = (activities, currentMonth, t) => {
 
     const monthActivities = activities.filter(activity => {
       const activityDate = new Date(activity.timestamp);
-      return activityDate >= monthStart && activityDate <= monthEnd;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const activityDateObj = activity.date ? new Date(activity.date + 'T00:00:00') : new Date(activity.timestamp);
+      activityDateObj.setHours(0, 0, 0, 0);
+      const isFutureDate = activityDateObj > today;
+      const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+      return activityDate >= monthStart && activityDate <= monthEnd && !isGoal;
     });
 
     const categoryData = {};
@@ -128,7 +143,13 @@ export const useYearlyCategoryData = (activities, currentYear, t) => {
 
     const yearActivities = activities.filter(activity => {
       const activityDate = new Date(activity.timestamp);
-      return activityDate >= yearStart && activityDate <= yearEnd;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const activityDateObj = activity.date ? new Date(activity.date + 'T00:00:00') : new Date(activity.timestamp);
+      activityDateObj.setHours(0, 0, 0, 0);
+      const isFutureDate = activityDateObj > today;
+      const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+      return activityDate >= yearStart && activityDate <= yearEnd && !isGoal;
     });
 
     const categoryData = {};
@@ -192,7 +213,13 @@ export const useMonthlyDailyData = (activities, currentMonth) => {
 
     const monthActivities = activities.filter(activity => {
       const activityDate = new Date(activity.timestamp);
-      return activityDate >= monthStart && activityDate <= monthEnd;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const activityDateObj = activity.date ? new Date(activity.date + 'T00:00:00') : new Date(activity.timestamp);
+      activityDateObj.setHours(0, 0, 0, 0);
+      const isFutureDate = activityDateObj > today;
+      const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+      return activityDate >= monthStart && activityDate <= monthEnd && !isGoal;
     });
 
     const daysData = {};
