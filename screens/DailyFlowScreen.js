@@ -17,6 +17,7 @@ import {
   LayoutAnimation,
   UIManager,
   PanResponder,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
@@ -97,6 +98,15 @@ const DailyFlowScreen = () => {
   const [swipedActivityId, setSwipedActivityId] = useState(null);
   const [deletingActivityId, setDeletingActivityId] = useState(null);
   const [swipeAnimations, setSwipeAnimations] = useState({});
+  
+  // Swipe gesture for date navigation
+  const swipeStartX = useRef(0);
+  const swipeStartY = useRef(0);
+  const isScrolling = useRef(false);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const gestureDirection = useRef(null); // 'horizontal' or 'vertical'
+  const hasMoved = useRef(false);
   
   // Date picker
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -1120,14 +1130,111 @@ const DailyFlowScreen = () => {
   };
 
 
-  const navigateDate = (direction) => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + direction);
-    setCurrentDate(newDate);
-  };
+  const navigateDate = useCallback((direction) => {
+    // Always navigate day by day (no activity-based navigation)
+    setCurrentDate(prevDate => {
+      const newDate = new Date(prevDate);
+      newDate.setDate(newDate.getDate() + direction);
+      return newDate;
+    });
+  }, []);
+
+  // PanResponder for date navigation swipe - simpler and more reliable
+  const screenWidth = Dimensions.get('window').width;
+  const dateSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Don't capture if scrolling
+        if (isScrolling.current) return false;
+        
+        const pageY = evt.nativeEvent.pageY;
+        const pageX = evt.nativeEvent.pageX;
+        
+        // Don't capture if touching header area or navigation buttons
+        if (pageY < 120 || pageX < 60 || pageX > screenWidth - 60) {
+          return false;
+        }
+        
+        // Check if horizontal movement is significant compared to vertical
+        const horizontalMovement = Math.abs(gestureState.dx);
+        const verticalMovement = Math.abs(gestureState.dy);
+        
+        // Only capture if horizontal movement is clearly dominant (2x ratio)
+        // Lowered threshold to 15 to match minSwipeDistance of 20
+        if (horizontalMovement > 15 && horizontalMovement > verticalMovement * 2) {
+          gestureDirection.current = 'horizontal';
+          return true;
+        }
+        
+        return false;
+      },
+      onPanResponderGrant: (evt) => {
+        touchStartX.current = evt.nativeEvent.pageX;
+        touchStartY.current = evt.nativeEvent.pageY;
+        hasMoved.current = false;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // Check if user is scrolling vertically
+        if (Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.2) {
+          gestureDirection.current = 'vertical';
+          isScrolling.current = true;
+          return;
+        }
+        
+        hasMoved.current = true;
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        // Reset scrolling flag
+        setTimeout(() => {
+          isScrolling.current = false;
+          gestureDirection.current = null;
+        }, 200);
+        
+        // If it was vertical scrolling, don't navigate
+        if (gestureDirection.current === 'vertical' || !hasMoved.current) {
+          touchStartX.current = 0;
+          touchStartY.current = 0;
+          return;
+        }
+        
+        const horizontalMovement = gestureState.dx;
+        const verticalMovement = Math.abs(gestureState.dy);
+        const minSwipeDistance = 20;
+        
+        // Only navigate if horizontal swipe is significant
+        if (Math.abs(horizontalMovement) > minSwipeDistance && 
+            Math.abs(horizontalMovement) > verticalMovement * 1.5) {
+                     
+          if (horizontalMovement > 0) {
+            // Swipe right - go to previous day (yesterday)
+            navigateDate(-1);
+          } else {
+            // Swipe left - go to next day (tomorrow)
+            navigateDate(1);
+          }
+        }
+        
+        // Reset
+        touchStartX.current = 0;
+        touchStartY.current = 0;
+        hasMoved.current = false;
+      },
+      onPanResponderTerminate: () => {
+        isScrolling.current = false;
+        gestureDirection.current = null;
+        touchStartX.current = 0;
+        touchStartY.current = 0;
+        hasMoved.current = false;
+      },
+    })
+  ).current;
+
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View 
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       {/* Tarih Navigasyonu */}
       <View style={[styles.dateHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigateDate(-1)} style={styles.navButton}>
@@ -1156,9 +1263,25 @@ const DailyFlowScreen = () => {
       />
 
       {/* Aktivite Listesi */}
-      <ScrollView 
+      <View 
         style={styles.activitiesContainer}
+        {...dateSwipeResponder.panHandlers}
+      >
+      <ScrollView 
+        ref={scrollViewRef}
+        style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContentContainer}
+        onScrollBeginDrag={() => { 
+          isScrolling.current = true;
+          gestureDirection.current = 'vertical';
+        }}
+        onScrollEndDrag={() => { 
+          setTimeout(() => {
+            isScrolling.current = false;
+            gestureDirection.current = null;
+          }, 200);
+        }}
+        scrollEventThrottle={16}
       >
         {activities.length === 0 ? (
           <View style={styles.emptyState}>
@@ -1197,8 +1320,11 @@ const DailyFlowScreen = () => {
                   const activityCategory = isGoalsSection ? CATEGORIES[activity.type] : category;
                   const isSwiped = swipedActivityId === activity.id;
                   const isDeleting = deletingActivityId === activity.id;
-                  const panResponder = createSwipePanResponder(activity);
-                  const slideAnimation = swipeAnimations[activity.id] || new Animated.Value(0);
+                  // Initialize animation for this activity
+                  if (!swipeAnimations[activity.id]) {
+                    swipeAnimations[activity.id] = new Animated.Value(0);
+                  }
+                  const slideAnimation = swipeAnimations[activity.id];
                   
                   return (
                     <ActivityCard
@@ -1207,7 +1333,6 @@ const DailyFlowScreen = () => {
                       category={activityCategory}
                       isSwiped={isSwiped}
                       isDeleting={isDeleting}
-                      panResponder={panResponder}
                       slideAnimation={slideAnimation}
                       colors={colors}
                       formatSeriesDetail={formatSeriesDetail}
@@ -1227,6 +1352,27 @@ const DailyFlowScreen = () => {
                           }}
                       onSwipeDelete={() => handleSwipeDelete(activity)}
                       onLongPress={handleGoalComplete}
+                      onToggleSwipe={() => {
+                        if (isSwiped) {
+                          // Close swipe
+                          Animated.spring(slideAnimation, {
+                            toValue: 0,
+                            useNativeDriver: true,
+                            tension: 100,
+                            friction: 8,
+                          }).start();
+                          setSwipedActivityId(null);
+                        } else {
+                          // Open swipe
+                          Animated.spring(slideAnimation, {
+                            toValue: -100,
+                            useNativeDriver: true,
+                            tension: 100,
+                            friction: 8,
+                          }).start();
+                          setSwipedActivityId(activity.id);
+                        }
+                      }}
                     />
                   );
                 })}
@@ -1235,6 +1381,7 @@ const DailyFlowScreen = () => {
           })
         )}
       </ScrollView>
+      </View>
 
       {/* Ekleme Butonları */}
       <View style={styles.addButtonsContainer}>

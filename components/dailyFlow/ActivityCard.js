@@ -11,14 +11,14 @@ export default function ActivityCard({
   category,
   isSwiped,
   isDeleting,
-  panResponder,
   slideAnimation,
   colors,
   formatSeriesDetail,
   getRatingColor,
   onEdit,
   onSwipeDelete,
-  onLongPress
+  onLongPress,
+  onToggleSwipe
 }) {
   const { t } = useTranslation();
 
@@ -73,17 +73,30 @@ export default function ActivityCard({
             transform: [{ translateX: slideAnimation }],
           }
         ]}
-        {...panResponder.panHandlers}
       >
-        <Pressable 
-          style={({ pressed }) => [
-            styles.activityCardPressable,
-            pressed && styles.activityCardPressed
-          ]}
-          onPress={onEdit}
-          onLongPress={isGoal && onLongPress ? () => onLongPress(activity) : undefined}
-          android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
-        >
+        <View style={styles.activityCardInner}>
+          {/* Modern swipe indicator - animated chevrons */}
+          <TouchableOpacity 
+            style={styles.swipeToggleButton}
+            onPress={onToggleSwipe}
+            hitSlop={{ top: 10, bottom: 10, left: 15, right: 5 }}
+            activeOpacity={0.6}
+          >
+            <View style={styles.swipeIndicatorContainer}>
+              <View style={[styles.chevronLine, styles.chevronTop, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
+              <View style={[styles.chevronLine, styles.chevronBottom, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
+            </View>
+          </TouchableOpacity>
+          
+          <Pressable 
+            style={({ pressed }) => [
+              styles.activityCardPressable,
+              pressed && styles.activityCardPressed
+            ]}
+            onPress={onEdit}
+            onLongPress={isGoal && onLongPress ? () => onLongPress(activity) : undefined}
+            android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
+          >
           <View style={styles.activityContent}>
             <View style={styles.activityHeader}>
               <View style={styles.activityTitleContainer}>
@@ -101,15 +114,6 @@ export default function ActivityCard({
                   </View>
                 )}
               </View>
-              {isGoal && (
-                <Text style={[styles.activityDetail, { color: colors.textSecondary, fontSize: 12, marginTop: 4 }]}>
-                  {t('activity.isGoal')} • {activityDate.toLocaleDateString(i18n.language === 'tr' ? 'tr-TR' : 'en-US', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
-                  })}
-                </Text>
-              )}
             </View>
             {activity.detail && (
               <Text style={[styles.activityDetail, { color: colors.textSecondary }]}>
@@ -136,6 +140,7 @@ export default function ActivityCard({
             )}
           </View>
         </Pressable>
+        </View>
       </Animated.View>
     </View>
   );
