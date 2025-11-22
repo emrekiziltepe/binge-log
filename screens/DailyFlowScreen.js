@@ -1363,9 +1363,9 @@ const DailyFlowScreen = () => {
                           }).start();
                           setSwipedActivityId(null);
                         } else {
-                          // Open swipe
+                          // Open swipe - narrower delete button (70px)
                           Animated.spring(slideAnimation, {
-                            toValue: -100,
+                            toValue: -70,
                             useNativeDriver: true,
                             tension: 100,
                             friction: 8,
