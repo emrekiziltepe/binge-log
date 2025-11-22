@@ -796,9 +796,6 @@ const DailyFlowScreen = () => {
     };
 
     try {
-    // Add/update effect with layout animation
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    
     let updatedActivities;
     if (editingActivity) {
         // Edit mode - update to Firebase
@@ -816,6 +813,14 @@ const DailyFlowScreen = () => {
     
       // Duplicate check
       const uniqueActivities = removeDuplicates(updatedActivities);
+      
+      // Configure layout animation before state update
+      try {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      } catch (layoutError) {
+        // Ignore layout animation errors
+        console.warn('LayoutAnimation error:', layoutError);
+      }
       
       setActivities(uniqueActivities);
       saveActivities(uniqueActivities);
@@ -1060,6 +1065,15 @@ const DailyFlowScreen = () => {
         );
         
         const uniqueActivities = removeDuplicates(updatedActivities);
+        
+        // Configure layout animation before state update
+        try {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        } catch (layoutError) {
+          // Ignore layout animation errors
+          console.warn('LayoutAnimation error:', layoutError);
+        }
+        
         setActivities(uniqueActivities);
         saveActivities(uniqueActivities);
         calculateStreak();
