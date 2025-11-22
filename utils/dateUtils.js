@@ -142,3 +142,15 @@ export const getEndOfDay = (date) => {
   return d;
 };
 
+/**
+ * Format date in local timezone as YYYY-MM-DD string
+ * This avoids timezone issues with toISOString()
+ */
+export const formatLocalDate = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+

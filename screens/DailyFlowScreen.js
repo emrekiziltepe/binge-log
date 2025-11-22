@@ -37,7 +37,7 @@ import { useGoals } from '../hooks/useGoals';
 import { useActivities } from '../hooks/useActivities';
 import { removeDuplicates } from '../utils/commonUtils';
 import { getCategories } from '../utils/categoryUtils';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatLocalDate } from '../utils/dateUtils';
 import ActivityCard from '../components/dailyFlow/ActivityCard';
 import DatePickerModal from '../components/dailyFlow/DatePickerModal';
 import MonthPickerModal from '../components/dailyFlow/MonthPickerModal';
@@ -246,21 +246,38 @@ const DailyFlowScreen = () => {
         }
       }
 
-      // Group by dates
-      const datesWithActivities = new Set();
-      allActivities.forEach(activity => {
-        const date = activity.date || new Date(activity.timestamp).toISOString().split('T')[0];
-        datesWithActivities.add(date);
+      // Filter out goal activities - only include activities where isGoal is false/undefined
+      // (completed goals automatically have isGoal: false)
+      const filteredActivities = allActivities.filter(activity => {
+        return !activity.isGoal;
       });
 
-      // Today's date
+      // Group by dates (only non-goal activities)
+      // Normalize all dates to YYYY-MM-DD format using local timezone
+      const datesWithActivities = new Set();
+      filteredActivities.forEach(activity => {
+        let dateStr;
+        if (activity.date) {
+          // If date field exists, use it directly (already in YYYY-MM-DD format)
+          dateStr = activity.date;
+        } else if (activity.timestamp) {
+          // Convert timestamp to local date string (YYYY-MM-DD)
+          dateStr = formatLocalDate(new Date(activity.timestamp));
+        } else {
+          // Fallback: use current date
+          dateStr = formatLocalDate(new Date());
+        }
+        datesWithActivities.add(dateStr);
+      });
+
+      // Today's date in local timezone (YYYY-MM-DD format)
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = formatLocalDate(today);
 
       // Calculate current streak (backwards from today)
       let currentStreakCount = 0;
       let checkDate = new Date(today);
+      checkDate.setHours(0, 0, 0, 0);
       
       // Count if activity exists today
       if (datesWithActivities.has(todayStr)) {
@@ -269,7 +286,13 @@ const DailyFlowScreen = () => {
       }
       
       // Count consecutive days backwards
-      while (datesWithActivities.has(checkDate.toISOString().split('T')[0])) {
+      while (true) {
+        const checkDateStr = formatLocalDate(checkDate);
+        
+        if (!datesWithActivities.has(checkDateStr)) {
+          break;
+        }
+        
         currentStreakCount++;
         checkDate.setDate(checkDate.getDate() - 1);
       }
@@ -409,7 +432,7 @@ const DailyFlowScreen = () => {
   const saveActivities = async (newActivities) => {
     try {
       const user = getCurrentUser();
-      const dateKey = currentDate.toISOString().split('T')[0];
+      const dateKey = formatLocalDate(currentDate);
       
       // Duplicate check
       const uniqueActivities = removeDuplicates(newActivities);
@@ -791,7 +814,7 @@ const DailyFlowScreen = () => {
       isCompleted: formData.isCompleted,
       rating: formData.rating,
       timestamp: editingActivity ? editingActivity.timestamp : new Date().toISOString(),
-      date: activityDate.toISOString().split('T')[0],
+      date: formatLocalDate(activityDate),
       isGoal: isGoal
     };
 
@@ -823,12 +846,14 @@ const DailyFlowScreen = () => {
       }
       
       setActivities(uniqueActivities);
-      saveActivities(uniqueActivities);
-      calculateStreak(); // Update streak
-    closeModal();
+      await saveActivities(uniqueActivities);
+      // Calculate streak asynchronously without blocking
+      calculateStreak().catch(err => console.error('Streak calculation error:', err));
+      closeModal();
     } catch (error) {
       console.error('Firebase save error:', error);
       Alert.alert(t('errors.error'), t('errors.saveError'));
+      // Don't close modal on error so user can retry
     }
   };
 
