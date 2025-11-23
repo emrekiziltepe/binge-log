@@ -344,9 +344,9 @@ const DailyFlowScreen = () => {
       
       if (!user) {
         // Only fetch from AsyncStorage for non-logged-in users
-        const storedActivities = await AsyncStorage.getItem(`activities_${dateKey}`);
+      const storedActivities = await AsyncStorage.getItem(`activities_${dateKey}`);
         let parsedActivities = [];
-        if (storedActivities) {
+      if (storedActivities) {
           parsedActivities = JSON.parse(storedActivities);
         }
         
@@ -859,7 +859,7 @@ const DailyFlowScreen = () => {
       await saveActivities(uniqueActivities);
       // Calculate streak asynchronously without blocking
       calculateStreak().catch(err => console.error('Streak calculation error:', err));
-      closeModal();
+    closeModal();
     } catch (error) {
       console.error('Firebase save error:', error);
       Alert.alert(t('errors.error'), t('errors.saveError'));
@@ -1085,19 +1085,32 @@ const DailyFlowScreen = () => {
     if (activityDate <= today) {
       try {
         // Update activity: move to today and remove goal status
+        // Note: isCompleted should NOT be set to true here - it means activity is fully completed (e.g., book finished)
+        const todayDateString = formatLocalDate(today);
         const updatedActivity = {
           ...activity,
-          date: today.toISOString().split('T')[0],
-          isGoal: false
+          date: todayDateString,
+          isGoal: false,
+          // Keep original isCompleted value - don't change it
+          timestamp: new Date().toISOString()
         };
 
-        // Update in Firebase
-        await updateActivityInFirebase(activity.id, updatedActivity);
+        // Use activity.id as Firebase document ID
+        // When activities are loaded from Firebase, id is set to the Firebase doc ID
+        // If activity has firebaseId, use that instead (for backward compatibility)
+        const firebaseDocId = activity.firebaseId || activity.id;
+        
+        // Update in Firebase - updateActivityInFirebase will handle document existence check
+        // But we need to ensure we're using the correct Firebase document ID
+        await updateActivityInFirebase(firebaseDocId, {
+          ...updatedActivity,
+          id: activity.id // Keep the original id field
+        });
 
-        // Update local state
-        const updatedActivities = activities.map(a => 
-          a.id === activity.id ? updatedActivity : a
-        );
+        // Update local state - remove old activity and add updated one
+        // Filter out the old activity (by ID) and add the updated one
+        const filteredActivities = activities.filter(a => a.id !== activity.id);
+        const updatedActivities = [...filteredActivities, updatedActivity];
         
         const uniqueActivities = removeDuplicates(updatedActivities);
         
@@ -1112,6 +1125,9 @@ const DailyFlowScreen = () => {
         setActivities(uniqueActivities);
         saveActivities(uniqueActivities);
         calculateStreak();
+        
+        // Reload activities to ensure sync with Firebase
+        loadActivities();
         
         Alert.alert(
           t('activity.completedGoal'),

@@ -70,12 +70,26 @@ export const updateActivityInFirebase = async (activityId, activityData) => {
         updatedAt: serverTimestamp()
       });
     } else {
-      // If document doesn't exist, add as new (with merge: true)
-      await setDoc(activityDoc, {
-        ...activityData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      // If document doesn't exist, try to find it by the 'id' field in the data
+      // This handles cases where the document ID doesn't match the activity.id
+      const querySnapshot = await getDocs(query(
+        activitiesRef,
+        where('id', '==', activityData.id || activityId)
+      ));
+      
+      if (!querySnapshot.empty) {
+        // Found existing document with matching id field, update it
+        const existingDoc = querySnapshot.docs[0];
+        await updateDoc(existingDoc.ref, {
+          ...activityData,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // No existing document found, this shouldn't happen for goal completion
+        // Log warning but don't create duplicate
+        console.warn('Activity not found in Firebase for update:', activityId);
+        // Don't create new document to avoid duplicates
+      }
     }
   } catch (error) {
     console.error('Firebase update activity error:', error);
