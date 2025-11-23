@@ -73,6 +73,7 @@
     "episodeHelp": "Bölüm alanına virgül ile birden fazla bölüm girebilirsiniz. Örn: 1,2",
     "newSeason": "Yeni Sezon",
     "seriesInputHelp": "Sezon ve bölüm numarasını girin:\n\nÖrnek: 3,5 (Sezon 3, Bölüm 5)",
+    "pagesInputHelp": "Sayfa sayısını girin:\n\nÖrnek: 50 (50 sayfa)",
     "noActivitiesYet": "Henüz aktivite eklenmemiş",
     "optional": "opsiyonel",
     "unknown": "Bilinmiyor",

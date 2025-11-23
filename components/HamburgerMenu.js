@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { changeLanguage } from '../i18n';
 import { logoutUser, loginUser, registerUser } from '../services/authService';
 import AuthScreen from '../screens/AuthScreen';
@@ -158,7 +159,7 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
     {
       icon: 'information-circle-outline',
       title: t('hamburgerMenu.about'),
-      subtitle: `${t('hamburgerMenu.appName')} ${t('hamburgerMenu.version')}`,
+      subtitle: `${t('hamburgerMenu.appName')} ${Constants.expoConfig?.version || t('hamburgerMenu.version')}`,
       onPress: () => {
         closeMenu();
         // About modal can be opened

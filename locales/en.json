@@ -73,6 +73,7 @@
     "episodeHelp": "You can enter multiple episodes separated by commas in the episode field. E.g.: 1,2",
     "newSeason": "New Season",
     "seriesInputHelp": "Enter season and episode number:\n\nExample: 3,5 (Season 3, Episode 5)",
+    "pagesInputHelp": "Enter page count:\n\nExample: 50 (50 pages)",
     "noActivitiesYet": "No activities added yet",
     "optional": "optional",
     "unknown": "Unknown",
