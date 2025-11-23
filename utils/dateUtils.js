@@ -54,17 +54,22 @@ export const formatYear = (date) => {
 
 /**
  * Get days in month as array with null padding for calendar grid
+ * Week starts on Monday (not Sunday)
  */
 export const getDaysInMonth = (date) => {
   const year = date.getFullYear();
   const month = date.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDay = new Date(year, month, 1).getDay();
+  const firstDayOfWeek = new Date(year, month, 1).getDay();
+  
+  // Convert Sunday (0) to Monday start (6), Monday (1) to 0, etc.
+  // Monday = 0, Tuesday = 1, ..., Sunday = 6
+  const mondayStartOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
   
   const days = [];
   
-  // Empty cells for days before the first day of the month
-  for (let i = 0; i < firstDay; i++) {
+  // Empty cells for days before the first day of the month (Monday start)
+  for (let i = 0; i < mondayStartOffset; i++) {
     days.push(null);
   }
   
@@ -93,6 +98,7 @@ export const getWeeksInMonth = (date) => {
 
 /**
  * Get days in month for calendar display (returns Date objects)
+ * Week starts on Monday (not Sunday)
  */
 export const getDaysInMonthForCalendar = (year, month) => {
   const firstDay = new Date(year, month, 1);
@@ -100,10 +106,14 @@ export const getDaysInMonthForCalendar = (year, month) => {
   const daysInMonth = lastDay.getDate();
   const startingDayOfWeek = firstDay.getDay();
   
+  // Convert Sunday (0) to Monday start (6), Monday (1) to 0, etc.
+  // Monday = 0, Tuesday = 1, ..., Sunday = 6
+  const mondayStartOffset = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1;
+  
   const days = [];
   
-  // Add empty cells for days before the first day of the month
-  for (let i = 0; i < startingDayOfWeek; i++) {
+  // Add empty cells for days before the first day of the month (Monday start)
+  for (let i = 0; i < mondayStartOffset; i++) {
     days.push(null);
   }
   
