@@ -12,7 +12,9 @@
     "ios": "expo start --ios",
     "ios:dev": "EXPO_PUBLIC_ENV=development expo start --ios",
     "ios:prod": "EXPO_PUBLIC_ENV=production expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:ios:prod": "eas-cli build --platform ios --profile production",
+    "build:ios:prod:submit": "eas-cli build --platform ios --profile production --auto-submit"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
