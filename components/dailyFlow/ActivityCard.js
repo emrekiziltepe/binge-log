@@ -101,8 +101,8 @@ export default function ActivityCard({
                     })
                   }
                 ],
-              }
-            ]}
+          }
+        ]}
           >
             <TouchableOpacity 
               style={styles.swipeToggleButton}
@@ -117,15 +117,15 @@ export default function ActivityCard({
             </TouchableOpacity>
           </Animated.View>
           
-          <Pressable 
-            style={({ pressed }) => [
-              styles.activityCardPressable,
-              pressed && styles.activityCardPressed
-            ]}
-            onPress={onEdit}
+        <Pressable 
+          style={({ pressed }) => [
+            styles.activityCardPressable,
+            pressed && styles.activityCardPressed
+          ]}
+          onPress={onEdit}
             onLongPress={isGoal && onLongPress ? () => onLongPress(activity) : undefined}
-            android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
-          >
+          android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
+        >
           <View style={styles.activityContent}>
             <View style={styles.activityHeader}>
               <View style={styles.activityTitleContainer}>
@@ -133,11 +133,11 @@ export default function ActivityCard({
                   {isGoal && (
                     <Text style={{ marginRight: 8, fontSize: 18 }}>🎯</Text>
                   )}
-                  {activity.isCompleted && (
+                {activity.isCompleted && (
                     <View style={[styles.completionIcon, { backgroundColor: colors.success, marginRight: 8 }]}>
-                      <Text style={styles.completionIconText}>✓</Text>
-                    </View>
-                  )}
+                    <Text style={styles.completionIconText}>✓</Text>
+                  </View>
+                )}
                   <Text style={[styles.activityTitle, { color: colors.text, flex: 1 }]}>
                     {activity.title}
                   </Text>

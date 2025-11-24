@@ -439,10 +439,12 @@ const DailyFlowScreen = () => {
     }
   };
 
-  const saveActivities = async (newActivities) => {
+  const saveActivities = async (newActivities, targetDate = null) => {
     try {
       const user = getCurrentUser();
-      const dateKey = formatLocalDate(currentDate);
+      // Use targetDate if provided (for editing activities on different dates), otherwise use currentDate
+      const dateToSave = targetDate || currentDate;
+      const dateKey = formatLocalDate(dateToSave);
       
       // Duplicate check
       const uniqueActivities = removeDuplicates(newActivities);
@@ -805,8 +807,22 @@ const DailyFlowScreen = () => {
       detail = seasonEpisodeStrings.join(';');
     }
 
-    // Use current date for the activity
-    const activityDate = currentDate;
+    // Use original date if editing, otherwise use current date
+    let activityDate;
+    if (editingActivity && editingActivity.date) {
+      // Preserve original date when editing
+      // If date is a string (YYYY-MM-DD), convert to Date object
+      if (typeof editingActivity.date === 'string') {
+        const [year, month, day] = editingActivity.date.split('-').map(Number);
+        activityDate = new Date(year, month - 1, day);
+      } else {
+        activityDate = new Date(editingActivity.date);
+      }
+    } else {
+      // New activity - use current date
+      activityDate = currentDate;
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const activityDateOnly = new Date(activityDate);
@@ -832,7 +848,9 @@ const DailyFlowScreen = () => {
     let updatedActivities;
     if (editingActivity) {
         // Edit mode - update to Firebase
-        await updateActivityInFirebase(editingActivity.id, newActivity);
+        // Use firebaseId if available, otherwise use id (for backward compatibility)
+        const firebaseDocId = editingActivity.firebaseId || editingActivity.id;
+        await updateActivityInFirebase(firebaseDocId, newActivity);
       updatedActivities = activities.map(a => 
         a.id === editingActivity.id ? newActivity : a
       );
@@ -856,7 +874,13 @@ const DailyFlowScreen = () => {
       }
       
       setActivities(uniqueActivities);
-      await saveActivities(uniqueActivities);
+      // Save activities for the activity's date (important when editing activities from different dates)
+      const activityDateForSave = editingActivity && editingActivity.date 
+        ? (typeof editingActivity.date === 'string' 
+            ? new Date(editingActivity.date + 'T00:00:00')
+            : new Date(editingActivity.date))
+        : activityDate;
+      await saveActivities(uniqueActivities, activityDateForSave);
       // Calculate streak asynchronously without blocking
       calculateStreak().catch(err => console.error('Streak calculation error:', err));
     closeModal();
