@@ -47,3 +47,7 @@ yarn-error.*
 # environment directories
 env/
 
+# coverage
+coverage
+
+
