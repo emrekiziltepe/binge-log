@@ -48,13 +48,13 @@ export default function ActivityFormModal({
     >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={[styles.modalOverlay, { backgroundColor: colors.modalBackground }]}>
-          <KeyboardAvoidingView 
+          <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardAvoidingView}
           >
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback onPress={() => { }}>
               <View style={[styles.modalContent, { backgroundColor: colors.modalContent }]}>
-                <ScrollView 
+                <ScrollView
                   ref={scrollViewRef}
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
@@ -62,20 +62,21 @@ export default function ActivityFormModal({
                   <Text style={[styles.modalTitle, { color: colors.text }]}>
                     {modalType === 'add' ? t('activity.addActivity') : t('activity.editActivity')}
                   </Text>
-                  
+
                   {/* Aktivite Adı */}
                   <Text style={[styles.inputLabel, { color: colors.text }]}>{t('activity.activityTitle')}</Text>
                   <TextInput
-                    style={[styles.textInput, { 
-                      backgroundColor: colors.inputBackground, 
+                    style={[styles.textInput, {
+                      backgroundColor: colors.inputBackground,
                       borderColor: colors.inputBorder,
                       color: colors.inputText
                     }]}
                     value={formData.title}
-                    onChangeText={(text) => setFormData({...formData, title: text})}
+                    onChangeText={(text) => setFormData({ ...formData, title: text })}
                     placeholder={t('activity.activityTitle')}
                     placeholderTextColor={colors.placeholder}
                     returnKeyType="next"
+                    testID="activity-title-input"
                   />
 
                   {/* Kategori Seçimi */}
@@ -86,7 +87,7 @@ export default function ActivityFormModal({
                         key={key}
                         style={[
                           styles.categoryButton,
-                          { 
+                          {
                             backgroundColor: formData.category === key ? colors.surfaceSecondary : colors.surfaceSecondary,
                             borderColor: formData.category === key ? colors.primary : colors.border,
                           },
@@ -94,8 +95,9 @@ export default function ActivityFormModal({
                         ]}
                         onPress={() => {
                           Keyboard.dismiss();
-                          setFormData({...formData, category: key});
+                          setFormData({ ...formData, category: key });
                         }}
+                        testID={`category-button-${key}`}
                       >
                         <Text style={styles.categoryEmoji}>{category.emoji}</Text>
                         <Text style={[styles.categoryName, { color: formData.category === key ? colors.primary : colors.text }]}>
@@ -121,8 +123,8 @@ export default function ActivityFormModal({
                               <View style={styles.seriesInputHalf}>
                                 <Text style={[styles.seriesInputLabel, { color: colors.text }]}>{t('activity.season')}</Text>
                                 <TextInput
-                                  style={[styles.seriesInput, { 
-                                    backgroundColor: colors.inputBackground, 
+                                  style={[styles.seriesInput, {
+                                    backgroundColor: colors.inputBackground,
                                     borderColor: colors.inputBorder,
                                     color: colors.inputText
                                   }]}
@@ -136,8 +138,8 @@ export default function ActivityFormModal({
                               <View style={styles.seriesInputHalf}>
                                 <Text style={[styles.seriesInputLabel, { color: colors.text }]}>{t('activity.episode')}</Text>
                                 <TextInput
-                                  style={[styles.seriesInput, { 
-                                    backgroundColor: colors.inputBackground, 
+                                  style={[styles.seriesInput, {
+                                    backgroundColor: colors.inputBackground,
                                     borderColor: colors.inputBorder,
                                     color: colors.inputText
                                   }]}
@@ -171,8 +173,8 @@ export default function ActivityFormModal({
                             <View style={styles.seriesInputHalf}>
                               <Text style={[styles.seriesInputLabel, { color: colors.text }]}>{t('activity.hours')}</Text>
                               <TextInput
-                                style={[styles.seriesInput, { 
-                                  backgroundColor: colors.inputBackground, 
+                                style={[styles.seriesInput, {
+                                  backgroundColor: colors.inputBackground,
                                   borderColor: colors.inputBorder,
                                   color: colors.inputText
                                 }]}
@@ -191,8 +193,8 @@ export default function ActivityFormModal({
                             <View style={styles.seriesInputHalf}>
                               <Text style={[styles.seriesInputLabel, { color: colors.text }]}>{t('activity.minutes')}</Text>
                               <TextInput
-                                style={[styles.seriesInput, { 
-                                  backgroundColor: colors.inputBackground, 
+                                style={[styles.seriesInput, {
+                                  backgroundColor: colors.inputBackground,
                                   borderColor: colors.inputBorder,
                                   color: colors.inputText
                                 }]}
@@ -212,19 +214,20 @@ export default function ActivityFormModal({
                         </View>
                       ) : (
                         <TextInput
-                          style={[styles.textInput, { 
-                            backgroundColor: colors.inputBackground, 
+                          style={[styles.textInput, {
+                            backgroundColor: colors.inputBackground,
                             borderColor: colors.inputBorder,
                             color: colors.inputText
                           }]}
                           value={formData.detail}
                           placeholderTextColor={colors.placeholder}
-                          onChangeText={(text) => setFormData({...formData, detail: text})}
+                          onChangeText={(text) => setFormData({ ...formData, detail: text })}
                           placeholder={CATEGORIES[formData.category].detailPlaceholder}
                           multiline={formData.category !== 'series'}
                           keyboardType={formData.category === 'series' ? 'numeric' : 'default'}
                           returnKeyType="done"
                           onSubmitEditing={Keyboard.dismiss}
+                          testID="activity-detail-input"
                         />
                       )}
                     </>
@@ -239,7 +242,7 @@ export default function ActivityFormModal({
                       >
                         <View style={[
                           styles.checkbox,
-                          { 
+                          {
                             borderColor: colors.border,
                             backgroundColor: formData.isCompleted ? colors.primary : 'transparent'
                           },
@@ -273,14 +276,15 @@ export default function ActivityFormModal({
                 {/* Butonlar */}
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
-                    style={[styles.cancelButton, { 
-                      backgroundColor: colors.surfaceSecondary, 
-                      borderColor: colors.border 
+                    style={[styles.cancelButton, {
+                      backgroundColor: colors.surfaceSecondary,
+                      borderColor: colors.border
                     }]}
                     onPress={() => {
                       Keyboard.dismiss();
                       onClose();
                     }}
+                    testID="cancel-button"
                   >
                     <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
@@ -290,6 +294,7 @@ export default function ActivityFormModal({
                       Keyboard.dismiss();
                       onSave();
                     }}
+                    testID="save-button"
                   >
                     <Text style={styles.saveButtonText}>{t('common.save')}</Text>
                   </TouchableOpacity>

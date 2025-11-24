@@ -84,14 +84,14 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
                 }
               } else {
                 Alert.alert(
-                  t('auth.error'), 
+                  t('auth.error'),
                   result?.error || t('auth.unknownError')
                 );
               }
             } catch (error) {
               console.error('Logout error:', error);
               Alert.alert(
-                t('auth.error'), 
+                t('auth.error'),
                 error?.message || t('auth.unknownError')
               );
             }
@@ -121,11 +121,11 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
     // Sync status indicator (only for logged-in users)
     ...(user ? [{
       icon: syncStatus?.syncInProgress ? 'sync' : (syncStatus?.isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'),
-      title: syncStatus?.syncInProgress ? t('hamburgerMenu.syncing') : 
-             (syncStatus?.isOnline ? t('hamburgerMenu.online') : t('hamburgerMenu.offline')),
+      title: syncStatus?.syncInProgress ? t('hamburgerMenu.syncing') :
+        (syncStatus?.isOnline ? t('hamburgerMenu.online') : t('hamburgerMenu.offline')),
       subtitle: syncStatus?.syncInProgress ? t('hamburgerMenu.syncingMessage') :
-                (syncStatus?.isOnline ? t('hamburgerMenu.autoSync') : t('hamburgerMenu.offlineMessage')),
-      onPress: () => {}, // Information only
+        (syncStatus?.isOnline ? t('hamburgerMenu.autoSync') : t('hamburgerMenu.offlineMessage')),
+      onPress: () => { }, // Information only
       disabled: true,
     }] : []),
     {
@@ -170,9 +170,10 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
   return (
     <View>
       {/* Hamburger Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.hamburgerButton}
         onPress={openMenu}
+        testID="hamburger-button"
       >
         <View style={styles.hamburgerLine} />
         <View style={styles.hamburgerLine} />
@@ -186,12 +187,12 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
         visible={modalVisible}
         onRequestClose={closeMenu}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.overlay, { backgroundColor: colors.modalBackground }]}
           activeOpacity={1}
           onPress={closeMenu}
         >
-          <Animated.View 
+          <Animated.View
             style={[
               styles.menuContainer,
               { backgroundColor: colors.surface, transform: [{ translateX: slideAnim }] }
@@ -213,10 +214,10 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
                   disabled={item.disabled}
                 >
                   <View style={styles.menuItemLeft}>
-                    <Ionicons 
-                      name={item.icon} 
-                      size={24} 
-                      color={item.disabled ? colors.textTertiary : colors.primary} 
+                    <Ionicons
+                      name={item.icon}
+                      size={24}
+                      color={item.disabled ? colors.textTertiary : colors.primary}
                     />
                     <View style={styles.menuItemText}>
                       <Text style={[styles.menuItemTitle, { color: item.disabled ? colors.textTertiary : colors.text }, item.disabled && styles.menuItemTextDisabled]}>
@@ -246,26 +247,26 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
           setLanguageModalVisible(false);
         }}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.languageModalOverlay, { backgroundColor: colors.modalBackground }]}
           activeOpacity={1}
           onPress={() => setLanguageModalVisible(false)}
         >
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.languageModalContent, { backgroundColor: colors.modalContent }]}
             activeOpacity={1}
             onPress={(e) => e.stopPropagation()}
           >
             <View style={styles.languageModalHeader}>
               <Text style={[styles.languageModalTitle, { color: colors.text }]}>{t('hamburgerMenu.chooseLanguage')}</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setLanguageModalVisible(false)}
                 style={styles.closeButton}
               >
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            
+
             {languages.map((language) => (
               <TouchableOpacity
                 key={language.code}

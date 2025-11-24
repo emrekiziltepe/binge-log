@@ -25,10 +25,10 @@ export default function QuickAddMenu({
     if (activity.type === 'series' || activity.type === 'book') {
       const category = CATEGORIES[activity.type];
       const promptTitle = activity.type === 'series' ? `📺 ${t('activity.seriesDetail')}` : `📚 ${t('activity.bookDetail')}`;
-      const promptMessage = activity.type === 'series' 
+      const promptMessage = activity.type === 'series'
         ? t('activity.seriesInputHelp')
         : t('activity.pagesInputHelp');
-      
+
       Alert.prompt(
         promptTitle,
         promptMessage,
@@ -39,13 +39,13 @@ export default function QuickAddMenu({
             onPress: (input) => {
               if (input && input.trim()) {
                 let detail = input.trim();
-                
+
                 // Special validation for series
                 if (activity.type === 'series') {
                   const parts = detail.replace(/[^0-9,]/g, '').split(/[, ]+/);
                   const season = parts[0];
                   const episode = parts[1];
-                  
+
                   if (!season || !episode || parseInt(season) <= 0 || parseInt(episode) <= 0) {
                     Alert.alert(
                       t('errors.invalidFormatTitle'),
@@ -54,10 +54,10 @@ export default function QuickAddMenu({
                     );
                     return;
                   }
-                  
+
                   detail = `${t('activity.season')} ${season}, ${t('activity.episode')} ${episode}`;
                 }
-                
+
                 const newActivity = {
                   id: Date.now().toString(),
                   title: activity.title,
@@ -65,7 +65,7 @@ export default function QuickAddMenu({
                   detail: detail,
                   timestamp: new Date().toISOString(),
                 };
-                
+
                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                 const updatedActivities = [...activities, newActivity];
                 const uniqueActivities = removeDuplicates(updatedActivities);
@@ -89,7 +89,7 @@ export default function QuickAddMenu({
         detail: activity.detail,
         timestamp: new Date().toISOString(),
       };
-      
+
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       const updatedActivities = [...activities, newActivity];
       const uniqueActivities = removeDuplicates(updatedActivities);
@@ -99,7 +99,7 @@ export default function QuickAddMenu({
   };
 
   return (
-    <TouchableWithoutFeedback onPress={onClose}>
+    <TouchableWithoutFeedback onPress={onClose} testID="quick-add-overlay">
       <View style={[styles.quickAddOverlay, { backgroundColor: colors.modalBackground }]}>
         <View style={[styles.quickAddMenu, { backgroundColor: colors.modalContent }]}>
           <Text style={[styles.quickAddTitle, { color: colors.text }]}>{t('activity.recentActivities')}</Text>
@@ -110,6 +110,7 @@ export default function QuickAddMenu({
                 key={index}
                 style={[styles.quickAddItem, { backgroundColor: colors.surfaceSecondary }]}
                 onPress={() => handleQuickAdd(activity)}
+                testID={`quick-add-item-${index}`}
               >
                 <Text style={styles.quickAddEmoji}>{category.emoji}</Text>
                 <View style={styles.quickAddTextContainer}>
