@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getWeekStart } from '../utils/dateUtils';
+import { getWeekStart, formatLocalDate } from '../utils/dateUtils';
 import { getCategoriesSimple } from '../utils/categoryUtils';
 
 // Weekly category data
@@ -226,10 +226,10 @@ export const useMonthlyDailyData = (activities, currentMonth) => {
     
     for (let day = 1; day <= monthEnd.getDate(); day++) {
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-      const dateKey = date.toISOString().split('T')[0];
+      const dateKey = formatLocalDate(date);
       
       const dayActivities = monthActivities.filter(activity => {
-        const activityDate = new Date(activity.timestamp).toISOString().split('T')[0];
+        const activityDate = formatLocalDate(new Date(activity.timestamp));
         return activityDate === dateKey;
       });
       

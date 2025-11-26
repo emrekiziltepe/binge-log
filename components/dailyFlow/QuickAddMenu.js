@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, TouchableWithoutFeedback, Alert, LayoutAnimation } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { removeDuplicates } from '../../utils/commonUtils';
+import { formatLocalDate } from '../../utils/dateUtils';
 import { dailyFlowStyles } from '../../styles/dailyFlowStyles';
 
 const styles = dailyFlowStyles;
@@ -12,6 +13,7 @@ export default function QuickAddMenu({
   CATEGORIES,
   activities,
   colors,
+  currentDate,
   onClose,
   onActivityAdded,
   onSaveRecentActivity
@@ -64,6 +66,7 @@ export default function QuickAddMenu({
                   type: activity.type,
                   detail: detail,
                   timestamp: new Date().toISOString(),
+                  date: formatLocalDate(currentDate),
                 };
 
                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -88,6 +91,7 @@ export default function QuickAddMenu({
         type: activity.type,
         detail: activity.detail,
         timestamp: new Date().toISOString(),
+        date: formatLocalDate(currentDate),
       };
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

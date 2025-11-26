@@ -340,7 +340,7 @@ const DailyFlowScreen = () => {
   const loadActivities = async () => {
     try {
       const user = getCurrentUser();
-      const dateKey = currentDate.toISOString().split('T')[0];
+      const dateKey = formatLocalDate(currentDate);
       
       if (!user) {
         // Only fetch from AsyncStorage for non-logged-in users
@@ -1461,6 +1461,7 @@ const DailyFlowScreen = () => {
         CATEGORIES={CATEGORIES}
         activities={activities}
         colors={colors}
+        currentDate={currentDate}
         onClose={() => setShowQuickAdd(false)}
         onActivityAdded={(uniqueActivities) => {
           setActivities(uniqueActivities);

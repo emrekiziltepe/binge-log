@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import SimpleBarChart from '../SimpleBarChart';
 import { reportsStyles } from '../../styles/reportsStyles';
+import { formatLocalDate } from '../../utils/dateUtils';
 
 const styles = reportsStyles;
 
@@ -41,7 +42,7 @@ export default function YearlySummary({
     const yearStart = new Date(currentYear.getFullYear(), 0, 1);
     const yearEnd = new Date(currentYear.getFullYear(), 11, 31, 23, 59, 59);
     if (activityDate >= yearStart && activityDate <= yearEnd) {
-      allDays.add(a.date || new Date(a.timestamp).toISOString().split('T')[0]);
+      allDays.add(a.date || formatLocalDate(new Date(a.timestamp)));
     }
   });
 

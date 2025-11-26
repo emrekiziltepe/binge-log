@@ -14,6 +14,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { formatLocalDate } from '../utils/dateUtils';
 
 // Get user ID (using simple ID for now)
 const getUserId = () => {
@@ -119,7 +120,7 @@ export const deleteActivityFromFirebase = async (activityId) => {
 export const getActivitiesFromFirebase = async (date) => {
   try {
     const activitiesRef = getActivitiesCollection();
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(date);
     
     // Get all activities, filter on client-side (doesn't require index)
     const querySnapshot = await getDocs(activitiesRef);
@@ -174,7 +175,7 @@ export const getAllActivitiesFromFirebase = async () => {
 export const subscribeToActivities = (date, callback) => {
   try {
     const activitiesRef = getActivitiesCollection();
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(date);
     
     const q = query(
       activitiesRef,
@@ -303,7 +304,7 @@ export const syncFirebaseToLocal = async () => {
     // Group by date
     const activitiesByDate = {};
     allActivities.forEach(activity => {
-      const date = activity.date || new Date(activity.timestamp).toISOString().split('T')[0];
+      const date = activity.date || formatLocalDate(new Date(activity.timestamp));
       if (!activitiesByDate[date]) {
         activitiesByDate[date] = [];
       }

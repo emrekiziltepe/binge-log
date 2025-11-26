@@ -22,7 +22,8 @@ import {
   formatMonth,
   formatYear,
   getDaysInMonth,
-  getWeeksInMonth
+  getWeeksInMonth,
+  formatLocalDate
 } from '../utils/dateUtils';
 import { removeDuplicates } from '../utils/commonUtils';
 import { reportsStyles } from '../styles/reportsStyles';
@@ -65,11 +66,11 @@ export default function ReportsScreen({ navigation }) {
       for (let i = 0; i < 7; i++) {
         const day = new Date(weekStart);
         day.setDate(weekStart.getDate() + i);
-        const dateKey = day.toISOString().split('T')[0];
+        const dateKey = formatLocalDate(day);
         
         // Filter activities for this specific date, exclude goals
         const dayActivities = activities.filter(activity => {
-          const activityDate = activity.date || new Date(activity.timestamp).toISOString().split('T')[0];
+          const activityDate = activity.date || formatLocalDate(new Date(activity.timestamp));
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const activityDateObj = activity.date ? new Date(activity.date + 'T00:00:00') : new Date(activity.timestamp);
@@ -223,7 +224,7 @@ export default function ReportsScreen({ navigation }) {
   const getActivityCountForDay = (day) => {
     if (!day) return 0;
     if (viewMode === 'weekly') {
-      const dateKey = day.toISOString().split('T')[0];
+      const dateKey = formatLocalDate(day);
       return weeklyData[dateKey]?.count || 0;
     } else {
       // Use day number for monthly view
@@ -240,7 +241,7 @@ export default function ReportsScreen({ navigation }) {
     let dayData;
     
     if (viewMode === 'weekly') {
-      const dateKey = day.toISOString().split('T')[0];
+      const dateKey = formatLocalDate(day);
       dayData = weeklyData[dateKey];
     } else {
       // Use day number for monthly view
@@ -398,7 +399,7 @@ export default function ReportsScreen({ navigation }) {
                 for (let i = 0; i < 7; i++) {
                   const day = new Date(weekStart);
                   day.setDate(weekStart.getDate() + i);
-                  const dateKey = day.toISOString().split('T')[0];
+                  const dateKey = formatLocalDate(day);
                   const dayActivities = weeklyData[dateKey]?.activities || [];
                   
                   chartData.push({ value: dayActivities.length });
@@ -429,7 +430,7 @@ export default function ReportsScreen({ navigation }) {
                       const year = currentMonth.getFullYear();
                       const month = currentMonth.getMonth();
                       const date = new Date(year, month, day);
-                      const dateKey = date.toISOString().split('T')[0];
+                      const dateKey = formatLocalDate(date);
                       const dayActivities = dailyData[dateKey]?.activities || [];
                       weekActivities.push(...dayActivities);
                     }
@@ -468,7 +469,7 @@ export default function ReportsScreen({ navigation }) {
               weekDays
                 .filter(day => getActivityCountForDay(day) > 0)
                 .map((day, index) => {
-                  const dateKey = day.toISOString().split('T')[0];
+                  const dateKey = formatLocalDate(day);
                   const dayActivities = weeklyData[dateKey]?.activities || [];
                   const isExpanded = expandedDay && 
                     typeof expandedDay.toDateString === 'function' && 
