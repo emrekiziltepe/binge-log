@@ -63,7 +63,11 @@ class GoalService {
       }
       return null;
     } catch (error) {
-      console.error('Firebase fetch goals error:', error);
+      // Silently fail if permissions error - will use AsyncStorage instead
+      // Only log non-permission errors to reduce console noise
+      if (error.code && error.code !== 'permission-denied' && error.code !== 'permissions-denied') {
+        console.error('Firebase fetch goals error:', error);
+      }
       return null;
     }
   }

@@ -286,40 +286,72 @@ const DailyFlowScreen = () => {
 
       // Calculate current streak (backwards from today)
       let currentStreakCount = 0;
-      let checkDate = new Date(today);
-      checkDate.setHours(0, 0, 0, 0);
       
-      // Count if activity exists today
-      if (datesWithActivities.has(todayStr)) {
-        currentStreakCount = 1;
-        checkDate.setDate(checkDate.getDate() - 1);
-      }
+      // Get sorted dates (most recent first)
+      const sortedDates = Array.from(datesWithActivities).sort().reverse();
       
-      // Count consecutive days backwards
-      while (true) {
-        const checkDateStr = formatLocalDate(checkDate);
-        
-        if (!datesWithActivities.has(checkDateStr)) {
-          break;
-        }
-        
-        currentStreakCount++;
-        checkDate.setDate(checkDate.getDate() - 1);
+      if (sortedDates.length === 0) {
+        setCurrentStreak(0);
+        setLongestStreak(0);
+        return;
       }
 
-      // Longest streak hesapla
-      const sortedDates = Array.from(datesWithActivities).sort().reverse();
+      // Calculate yesterday's date
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = formatLocalDate(yesterday);
+      
+      // Determine starting point for streak calculation
+      // Streak is active if there's activity today OR yesterday
+      let startDateStr = null;
+      
+      if (datesWithActivities.has(todayStr)) {
+        // Today has activity - start from today
+        startDateStr = todayStr;
+      } else if (datesWithActivities.has(yesterdayStr)) {
+        // Today has no activity, but yesterday has - start from yesterday
+        startDateStr = yesterdayStr;
+      } else {
+        // Neither today nor yesterday has activity - streak is broken
+        currentStreakCount = 0;
+      }
+      
+      // If streak is still active, count backwards
+      if (startDateStr) {
+        const [startYear, startMonth, startDay] = startDateStr.split('-').map(Number);
+        let checkDate = new Date(startYear, startMonth - 1, startDay);
+        checkDate.setHours(0, 0, 0, 0);
+        
+        // Count consecutive days backwards
+        while (true) {
+          const checkDateStr = formatLocalDate(checkDate);
+          
+          if (!datesWithActivities.has(checkDateStr)) {
+            break;
+          }
+          
+          currentStreakCount++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        }
+      }
+
+      // Longest streak calculate (sort dates from oldest to newest)
+      const sortedDatesOldestFirst = Array.from(datesWithActivities).sort();
       let longestStreakCount = 0;
       let tempStreak = 0;
       let lastDate = null;
 
-      for (const dateStr of sortedDates) {
-        const currentDate = new Date(dateStr);
+      for (const dateStr of sortedDatesOldestFirst) {
+        // Parse date correctly (YYYY-MM-DD format with local timezone)
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const currentDate = new Date(year, month - 1, day);
+        currentDate.setHours(0, 0, 0, 0);
+        
         if (lastDate === null) {
           tempStreak = 1;
           longestStreakCount = 1;
         } else {
-          const daysDiff = Math.floor((lastDate - currentDate) / (1000 * 60 * 60 * 24));
+          const daysDiff = Math.floor((currentDate - lastDate) / (1000 * 60 * 60 * 24));
           if (daysDiff === 1) {
             tempStreak++;
             longestStreakCount = Math.max(longestStreakCount, tempStreak);
@@ -855,9 +887,25 @@ const DailyFlowScreen = () => {
         a.id === editingActivity.id ? newActivity : a
       );
     } else {
-        // Ekleme modu - Firebase'e ekle
-        const firebaseId = await addActivityToFirebase(newActivity);
-        newActivity.firebaseId = firebaseId;
+        // Ekleme modu - Firebase'e ekle (eğer kullanıcı giriş yapmışsa)
+        const user = getCurrentUser();
+        
+        if (user) {
+          try {
+            const firebaseId = await addActivityToFirebase(newActivity);
+            if (firebaseId) {
+              newActivity.firebaseId = firebaseId;
+            }
+          } catch (firebaseError) {
+            // Firebase'e ekleme başarısız oldu
+            console.error('Firebase add failed, saving to AsyncStorage only:', firebaseError);
+            // Aktiviteyi AsyncStorage'a kaydedeceğiz, daha sonra sync edilebilir
+            Alert.alert(
+              t('errors.warning') || 'Warning',
+              'Activity saved locally but could not be saved to Firebase. It will be synced when connection is restored.'
+            );
+          }
+        }
       updatedActivities = [...activities, newActivity];
       saveRecentActivity(newActivity);
     }
@@ -881,6 +929,17 @@ const DailyFlowScreen = () => {
             : new Date(editingActivity.date))
         : activityDate;
       await saveActivities(uniqueActivities, activityDateForSave);
+      
+      // If user is logged in, reload activities from Firebase to ensure sync
+      const user = getCurrentUser();
+      if (user && !editingActivity) {
+        // For new activities, wait a bit then reload to get the latest from Firebase
+        // This ensures Firebase write has completed
+        setTimeout(() => {
+          loadActivities();
+        }, 500);
+      }
+      
       // Calculate streak asynchronously without blocking
       calculateStreak().catch(err => console.error('Streak calculation error:', err));
     closeModal();
