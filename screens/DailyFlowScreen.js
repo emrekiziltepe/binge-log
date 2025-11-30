@@ -1,44 +1,41 @@
-import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Pressable,
   Alert,
-  TextInput,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
   Animated,
   LayoutAnimation,
   UIManager,
-  PanResponder,
-  Dimensions,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import { 
-  getActivitiesFromFirebase, 
   addActivityToFirebase, 
   updateActivityInFirebase, 
   deleteActivityFromFirebase,
-  subscribeToActivities,
-  syncFirebaseToLocal,
-  getAllActivitiesFromFirebase
 } from '../services/firebaseService';
 import { getCurrentUser } from '../services/authService';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { dailyFlowStyles } from '../styles/dailyFlowStyles';
 import { useGoals } from '../hooks/useGoals';
-import { useActivities } from '../hooks/useActivities';
+import { useStreakCalculation } from '../hooks/useStreakCalculation';
+import { useDateNavigation } from '../hooks/useDateNavigation';
+import { useActivityForm } from '../hooks/useActivityForm';
+import { useActivityManagement } from '../hooks/useActivityManagement';
 import { removeDuplicates } from '../utils/commonUtils';
 import { getCategories } from '../utils/categoryUtils';
 import { formatDate, formatLocalDate } from '../utils/dateUtils';
+import { 
+  getRatingColor, 
+  formatSeriesDetail, 
+  groupActivitiesByCategory, 
+  calculateDailyStats 
+} from '../utils/activityUtils';
 import ActivityCard from '../components/dailyFlow/ActivityCard';
 import DatePickerModal from '../components/dailyFlow/DatePickerModal';
 import MonthPickerModal from '../components/dailyFlow/MonthPickerModal';
@@ -58,119 +55,84 @@ const DailyFlowScreen = () => {
   const { t } = useTranslation();
   const { colors } = useContext(ThemeContext);
   const CATEGORIES = getCategories(t);
-  const [activities, setActivities] = useState([]);
+  
+  // Core state
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [modalType, setModalType] = useState(null); // 'add' veya 'edit'
+  const [modalType, setModalType] = useState(null); // 'add' or 'edit'
   const [editingActivity, setEditingActivity] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    category: '',
-    detail: '',
-    season: '',
-    episode: '',
-    isCompleted: false,
-    rating: 0
-  });
   
-  // Multiple season-episode pairs for series
-  const [seasonEpisodes, setSeasonEpisodes] = useState([{ season: '', episode: '' }]);
+  // Custom hooks
+  const { activities, setActivities, loadActivities, saveActivities } = useActivityManagement(currentDate);
+  const { currentStreak, longestStreak, calculateStreak } = useStreakCalculation();
   
-  // Duration for sport (hours and minutes)
-  const [duration, setDuration] = useState({ hours: '', minutes: '' });
+  const scrollViewRef = useRef(null);
   
-  // Quick add mode flag (hides category selection and disables title editing)
-  const [isQuickAdd, setIsQuickAdd] = useState(false);
+  // Date navigation hook
+  const dateNavigation = useDateNavigation(currentDate, setCurrentDate, t);
+  const {
+    showDatePicker,
+    setShowDatePicker,
+    selectedYear,
+    selectedMonth,
+    showYearPicker,
+    setShowYearPicker,
+    showMonthPicker,
+    setShowMonthPicker,
+    navigateDate,
+    openDatePicker,
+    selectDate,
+    handleYearSelect,
+    handleMonthSelect,
+    goToToday,
+    generateCalendarDays,
+    generateYearOptions,
+    generateMonthOptions,
+    dateSwipeResponder,
+    handleScrollBeginDrag,
+    handleScrollEndDrag,
+  } = dateNavigation;
   
-  // Statistics variables
-  const [dailyStats, setDailyStats] = useState({
-    totalActivities: 0,
-    categoryCount: {},
-    mostActiveCategory: null
-  });
-  
-  // Streak tracking
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [longestStreak, setLongestStreak] = useState(0);
+  // Activity form hook
+  const activityForm = useActivityForm(editingActivity, modalType, scrollViewRef);
+  const {
+    formData,
+    setFormData,
+    seasonEpisodes,
+    setSeasonEpisodes,
+    duration,
+    setDuration,
+    isQuickAdd,
+    setIsQuickAdd,
+    handleCompletionToggle,
+    handleStarPress,
+    addSeasonEpisodeRow,
+    removeSeasonEpisodeRow,
+    updateSeasonEpisode,
+    resetForm,
+    validateForm,
+    formatFormDataForSave,
+  } = activityForm;
   
   // Goals
   const { goals } = useGoals();
   
-  // Smart features
+  // UI state
   const [recentActivities, setRecentActivities] = useState([]);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [swipedActivityId, setSwipedActivityId] = useState(null);
   const [deletingActivityId, setDeletingActivityId] = useState(null);
   const [swipeAnimations, setSwipeAnimations] = useState({});
-  
-  // Swipe gesture for date navigation
-  const swipeStartX = useRef(0);
-  const swipeStartY = useRef(0);
-  const isScrolling = useRef(false);
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const gestureDirection = useRef(null); // 'horizontal' or 'vertical'
-  const hasMoved = useRef(false);
-  
-  // Date picker
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [showYearPicker, setShowYearPicker] = useState(false);
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState({});
   
-  // Ref for stars section
-  const starsRef = useRef(null);
-  const scrollViewRef = useRef(null);
-  const monthScrollRef = useRef(null);
-  const yearScrollRef = useRef(null);
+  // Calculate daily stats from activities
+  const dailyStats = useMemo(() => calculateDailyStats(activities), [activities]);
 
+  // Effects
   useEffect(() => {
-    loadActivities();
     loadRecentActivities();
     calculateStreak();
-  }, [currentDate]);
+  }, [currentDate, calculateStreak]);
 
-  useEffect(() => {
-    calculateDailyStats();
-  }, [activities]);
-
-  // Modal state control - synchronize form data in edit mode
-  useEffect(() => {
-    if (modalType === 'edit' && editingActivity) {
-      // Make sure form data is correct
-      let season = '';
-      let episode = '';
-      let detail = editingActivity.detail || '';
-      
-      // Separate season and episode for series
-      if (editingActivity.type === 'series' && editingActivity.detail) {
-        const parts = editingActivity.detail.split(',');
-        if (parts.length >= 2) {
-          season = parts[0].trim();
-          // Combine all episodes (comma separated)
-          episode = parts.slice(1).join(',').trim();
-          detail = ''; // Leave detail empty for series
-        }
-      }
-      
-      if (formData.title !== editingActivity.title || 
-          formData.category !== editingActivity.type ||
-          formData.detail !== detail ||
-          formData.season !== season ||
-          formData.episode !== episode) {
-        setFormData({
-          title: editingActivity.title,
-          category: editingActivity.type,
-          detail: detail,
-          season: season,
-          episode: episode,
-          isCompleted: editingActivity.isCompleted || false,
-          rating: editingActivity.rating || 0
-        });
-      }
-    }
-  }, [modalType, editingActivity]);
 
   const loadRecentActivities = async () => {
     try {
@@ -194,314 +156,6 @@ const DailyFlowScreen = () => {
     }
   };
 
-  const calculateDailyStats = () => {
-    const categoryCount = {};
-    let mostActiveCategory = null;
-    let maxCount = 0;
-
-    activities.forEach(activity => {
-      const category = activity.type;
-      categoryCount[category] = (categoryCount[category] || 0) + 1;
-      
-      if (categoryCount[category] > maxCount) {
-        maxCount = categoryCount[category];
-        mostActiveCategory = category;
-      }
-    });
-
-    setDailyStats({
-      totalActivities: activities.length,
-      categoryCount,
-      mostActiveCategory
-    });
-  };
-
-  // Streak calculation
-  const calculateStreak = async () => {
-    try {
-      const user = getCurrentUser();
-      let allActivities = [];
-      
-      if (!user) {
-        // Get all activities from AsyncStorage for non-logged-in users
-        const allKeys = await AsyncStorage.getAllKeys();
-        const activityKeys = allKeys.filter(key => key.startsWith('activities_'));
-        
-        for (const key of activityKeys) {
-          const stored = await AsyncStorage.getItem(key);
-          if (stored) {
-            const activities = JSON.parse(stored);
-            if (Array.isArray(activities)) {
-              allActivities.push(...activities);
-            }
-          }
-        }
-      } else {
-        // Get all activities from Firebase for logged-in users
-        try {
-          allActivities = await getAllActivitiesFromFirebase();
-        } catch (error) {
-          // If Firebase fails, get from AsyncStorage
-          const allKeys = await AsyncStorage.getAllKeys();
-          const userSpecificKeys = allKeys.filter(key => 
-            key.startsWith(`activities_${user.uid}_`)
-          );
-          
-          for (const key of userSpecificKeys) {
-            const stored = await AsyncStorage.getItem(key);
-            if (stored) {
-              const activities = JSON.parse(stored);
-              if (Array.isArray(activities)) {
-                allActivities.push(...activities);
-              }
-            }
-          }
-        }
-      }
-
-      // Filter out goal activities - only include activities where isGoal is false/undefined
-      // (completed goals automatically have isGoal: false)
-      const filteredActivities = allActivities.filter(activity => {
-        return !activity.isGoal;
-      });
-
-      // Group by dates (only non-goal activities)
-      // Normalize all dates to YYYY-MM-DD format using local timezone
-      const datesWithActivities = new Set();
-      filteredActivities.forEach(activity => {
-        let dateStr;
-        if (activity.date) {
-          // If date field exists, use it directly (already in YYYY-MM-DD format)
-          dateStr = activity.date;
-        } else if (activity.timestamp) {
-          // Convert timestamp to local date string (YYYY-MM-DD)
-          dateStr = formatLocalDate(new Date(activity.timestamp));
-        } else {
-          // Fallback: use current date
-          dateStr = formatLocalDate(new Date());
-        }
-        datesWithActivities.add(dateStr);
-      });
-
-      // Today's date in local timezone (YYYY-MM-DD format)
-      const today = new Date();
-      const todayStr = formatLocalDate(today);
-
-      // Calculate current streak (backwards from today)
-      let currentStreakCount = 0;
-      
-      // Get sorted dates (most recent first)
-      const sortedDates = Array.from(datesWithActivities).sort().reverse();
-      
-      if (sortedDates.length === 0) {
-        setCurrentStreak(0);
-        setLongestStreak(0);
-        return;
-      }
-
-      // Calculate yesterday's date
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = formatLocalDate(yesterday);
-      
-      // Determine starting point for streak calculation
-      // Streak is active if there's activity today OR yesterday
-      let startDateStr = null;
-      
-      if (datesWithActivities.has(todayStr)) {
-        // Today has activity - start from today
-        startDateStr = todayStr;
-      } else if (datesWithActivities.has(yesterdayStr)) {
-        // Today has no activity, but yesterday has - start from yesterday
-        startDateStr = yesterdayStr;
-      } else {
-        // Neither today nor yesterday has activity - streak is broken
-        currentStreakCount = 0;
-      }
-      
-      // If streak is still active, count backwards
-      if (startDateStr) {
-        const [startYear, startMonth, startDay] = startDateStr.split('-').map(Number);
-        let checkDate = new Date(startYear, startMonth - 1, startDay);
-        checkDate.setHours(0, 0, 0, 0);
-        
-        // Count consecutive days backwards
-        while (true) {
-          const checkDateStr = formatLocalDate(checkDate);
-          
-          if (!datesWithActivities.has(checkDateStr)) {
-            break;
-          }
-          
-          currentStreakCount++;
-          checkDate.setDate(checkDate.getDate() - 1);
-        }
-      }
-
-      // Longest streak calculate (sort dates from oldest to newest)
-      const sortedDatesOldestFirst = Array.from(datesWithActivities).sort();
-      let longestStreakCount = 0;
-      let tempStreak = 0;
-      let lastDate = null;
-
-      for (const dateStr of sortedDatesOldestFirst) {
-        // Parse date correctly (YYYY-MM-DD format with local timezone)
-        const [year, month, day] = dateStr.split('-').map(Number);
-        const currentDate = new Date(year, month - 1, day);
-        currentDate.setHours(0, 0, 0, 0);
-        
-        if (lastDate === null) {
-          tempStreak = 1;
-          longestStreakCount = 1;
-        } else {
-          const daysDiff = Math.floor((currentDate - lastDate) / (1000 * 60 * 60 * 24));
-          if (daysDiff === 1) {
-            tempStreak++;
-            longestStreakCount = Math.max(longestStreakCount, tempStreak);
-          } else {
-            tempStreak = 1;
-          }
-        }
-        lastDate = currentDate;
-      }
-
-      setCurrentStreak(currentStreakCount);
-      setLongestStreak(longestStreakCount);
-    } catch (error) {
-      console.error('Streak calculation error:', error);
-    }
-  };
-
-  const loadActivities = async () => {
-    try {
-      const user = getCurrentUser();
-      const dateKey = formatLocalDate(currentDate);
-      
-      if (!user) {
-        // Only fetch from AsyncStorage for non-logged-in users
-      const storedActivities = await AsyncStorage.getItem(`activities_${dateKey}`);
-        let parsedActivities = [];
-      if (storedActivities) {
-          parsedActivities = JSON.parse(storedActivities);
-        }
-        
-        // Filter activities: only show goals if their date matches currentDate
-        const filteredActivities = parsedActivities.filter(activity => {
-          const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
-          activityDate.setHours(0, 0, 0, 0);
-          const currentDateOnly = new Date(currentDate);
-          currentDateOnly.setHours(0, 0, 0, 0);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const isFutureDate = activityDate > today;
-          const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
-          
-          // If it's a goal, only show it if the activity date matches current date
-          if (isGoal) {
-            return activityDate.getTime() === currentDateOnly.getTime();
-          }
-          // If it's not a goal, show it if it matches current date
-          return activity.date === dateKey;
-        });
-        
-        const uniqueActivities = removeDuplicates(filteredActivities);
-        setActivities(uniqueActivities);
-        return;
-      }
-
-      const userSpecificKey = `activities_${user.uid}_${dateKey}`;
-      
-      // Fetch from Firebase for logged-in users
-      try {
-        const firebaseActivities = await getActivitiesFromFirebase(currentDate);
-        
-        // Filter activities: only show goals if their date matches currentDate
-        const filteredActivities = firebaseActivities.filter(activity => {
-          const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
-          activityDate.setHours(0, 0, 0, 0);
-          const currentDateOnly = new Date(currentDate);
-          currentDateOnly.setHours(0, 0, 0, 0);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const isFutureDate = activityDate > today;
-          const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
-          
-          // If it's a goal, only show it if the activity date matches current date
-          if (isGoal) {
-            return activityDate.getTime() === currentDateOnly.getTime();
-          }
-          // If it's not a goal, show it if it matches current date
-          return activity.date === dateKey;
-        });
-        
-        const uniqueActivities = removeDuplicates(filteredActivities);
-        setActivities(uniqueActivities);
-        // Also save Firebase data to AsyncStorage (for offline backup) - only save filtered activities for this date
-        await AsyncStorage.setItem(userSpecificKey, JSON.stringify(filteredActivities));
-      } catch (firebaseError) {
-        // Only fetch from AsyncStorage if Firebase fails
-        const storedActivities = await AsyncStorage.getItem(userSpecificKey);
-        let parsedActivities = [];
-        if (storedActivities) {
-          parsedActivities = JSON.parse(storedActivities);
-        }
-        
-        // Filter activities: only show goals if their date matches currentDate
-        const filteredActivities = parsedActivities.filter(activity => {
-          const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
-          activityDate.setHours(0, 0, 0, 0);
-          const currentDateOnly = new Date(currentDate);
-          currentDateOnly.setHours(0, 0, 0, 0);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const isFutureDate = activityDate > today;
-          const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
-          
-          // If it's a goal, only show it if the activity date matches current date
-          if (isGoal) {
-            return activityDate.getTime() === currentDateOnly.getTime();
-          }
-          // If it's not a goal, show it if it matches current date
-          return activity.date === dateKey;
-        });
-        
-        const uniqueActivities = removeDuplicates(filteredActivities);
-        setActivities(uniqueActivities);
-      }
-    } catch (error) {
-      console.error('Error loading activities:', error);
-      setActivities([]);
-    }
-  };
-
-  const saveActivities = async (newActivities, targetDate = null) => {
-    try {
-      const user = getCurrentUser();
-      // Use targetDate if provided (for editing activities on different dates), otherwise use currentDate
-      const dateToSave = targetDate || currentDate;
-      const dateKey = formatLocalDate(dateToSave);
-      
-      // Filter activities to only include those for the target date
-      const activitiesForDate = newActivities.filter(activity => {
-        const activityDate = activity.date || formatLocalDate(new Date(activity.timestamp));
-        return activityDate === dateKey;
-      });
-      
-      // Duplicate check
-      const uniqueActivities = removeDuplicates(activitiesForDate);
-      
-      if (!user) {
-        // Old format for non-logged-in users
-        await AsyncStorage.setItem(`activities_${dateKey}`, JSON.stringify(uniqueActivities));
-      } else {
-        // User-specific format for logged-in users
-        const userSpecificKey = `activities_${user.uid}_${dateKey}`;
-        await AsyncStorage.setItem(userSpecificKey, JSON.stringify(uniqueActivities));
-      }
-    } catch (error) {
-      console.error('Error saving activities:', error);
-    }
-  };
 
   const saveRecentActivity = async (activity) => {
     try {
@@ -523,186 +177,11 @@ const DailyFlowScreen = () => {
     }
   };
 
-  // Date picker functions
-  const openDatePicker = () => {
-    setShowDatePicker(true);
-  };
-
-  const selectDate = (date) => {
-    setCurrentDate(date);
-    setShowDatePicker(false);
-  };
-
-  const generateCalendarDays = () => {
-    const currentMonth = new Date(selectedYear, selectedMonth, 1);
-    const lastDay = new Date(selectedYear, selectedMonth + 1, 0);
-    // Fix so Monday = 0, Tuesday = 1, ..., Sunday = 6
-    const firstDayOfWeek = (currentMonth.getDay() + 6) % 7;
-    
-    const days = [];
-    
-    // Previous month's last days
-    const prevMonth = new Date(selectedYear, selectedMonth - 1, 0);
-    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-      const date = new Date(prevMonth.getFullYear(), prevMonth.getMonth(), prevMonth.getDate() - i);
-      days.push({ date, isCurrentMonth: false, isToday: false });
-    }
-    
-    // This month's days
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      const date = new Date(selectedYear, selectedMonth, day);
-      const isToday = date.toDateString() === new Date().toDateString();
-      days.push({ date, isCurrentMonth: true, isToday });
-    }
-    
-    // Next month's first days (to complete the calendar)
-    const remainingDays = 42 - days.length; // 6 weeks x 7 days
-    for (let day = 1; day <= remainingDays; day++) {
-      const date = new Date(selectedYear, selectedMonth + 1, day);
-      days.push({ date, isCurrentMonth: false, isToday: false });
-    }
-    
-    return days;
-  };
-
-  const generateYearOptions = () => {
-    const years = [];
-    const currentYear = new Date().getFullYear();
-    
-    // Last 10 years + next 5 years
-    for (let i = 10; i >= 0; i--) {
-      years.push(currentYear - i);
-    }
-    for (let i = 1; i <= 5; i++) {
-      years.push(currentYear + i);
-    }
-    
-    return years;
-  };
-
-  const generateMonthOptions = () => {
-    return [
-      t('datePicker.months.january'), t('datePicker.months.february'), t('datePicker.months.march'), t('datePicker.months.april'),
-      t('datePicker.months.may'), t('datePicker.months.june'),
-      t('datePicker.months.july'), t('datePicker.months.august'), t('datePicker.months.september'), t('datePicker.months.october'), t('datePicker.months.november'), t('datePicker.months.december')
-    ];
-  };
-
-  const handleYearSelect = (year) => {
-    setSelectedYear(year);
-    setShowYearPicker(false);
-  };
-
-  const handleMonthSelect = (month) => {
-    setSelectedMonth(month);
-    setShowMonthPicker(false);
-  };
-
-  const handleCompletionToggle = () => {
-    const newCompleted = !formData.isCompleted;
-    setFormData({...formData, isCompleted: newCompleted});
-    
-    // If completed is checked, scroll to stars section
-    if (newCompleted && scrollViewRef.current) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 300);
-    }
-  };
-
-
-  // Return color based on rating
-  const getRatingColor = (rating) => {
-    if (rating === 1) return '#dc2626'; // Dark red (1)
-    if (rating === 2) return '#ef4444'; // Light red (2)
-    if (rating === 3) return '#ea580c'; // Dark orange (3)
-    if (rating === 4) return '#f97316'; // Light orange (4)
-    if (rating === 5) return '#d97706'; // Dark yellow (5)
-    if (rating === 6) return '#eab308'; // Light yellow (6)
-    if (rating === 7) return '#16a34a'; // Dark green (7)
-    if (rating === 8) return '#22c55e'; // Light green (8)
-    if (rating === 9) return '#15803d'; // Dark green (9)
-    return '#166534'; // Darkest green (10)
-  };
-
-  // Format series detail
-  const formatSeriesDetail = (detail) => {
-    if (!detail) return '';
-    
-    // Multiple season check (semicolon separated)
-    if (detail.includes(';')) {
-      const seasonEpisodes = detail.split(';').map(se => se.trim());
-      const formatted = seasonEpisodes.map(se => {
-        const parts = se.split(',').map(part => part.trim());
-        const season = parts[0];
-        const episodes = parts.slice(1);
-        
-        if (episodes.length === 0) return `${t('activity.season')} ${season}`;
-        return `${t('activity.season')} ${season}, ${t('activity.episode')}: ${episodes.join(',')}`;
-      });
-      
-      return formatted.join('\n');
-    }
-    
-    // Single season format (current logic)
-    const parts = detail.split(',').map(part => part.trim());
-    const season = parts[0];
-    
-    if (parts.length === 1) return `${t('activity.season')} ${season}`;
-    
-    const episodes = parts.slice(1);
-    const episodeText = episodes.join(',');
-    
-    return `${t('activity.season')} ${season}, ${t('activity.episode')}: ${episodeText}`;
-  };
-
-  // Group activities by category and separate goals
-  const groupActivitiesByCategory = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const regularActivities = [];
-    const goalActivities = [];
-    
-    activities.forEach(activity => {
-      const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
-      activityDate.setHours(0, 0, 0, 0);
-      const isFutureDate = activityDate > today;
-      const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
-      
-      if (isGoal) {
-        goalActivities.push(activity);
-      } else {
-        regularActivities.push(activity);
-      }
-    });
-    
-    const grouped = {};
-    
-    // Group regular activities by category
-    regularActivities.forEach(activity => {
-      const category = activity.type;
-      if (!grouped[category]) {
-        grouped[category] = [];
-      }
-      grouped[category].push(activity);
-    });
-    
-    // Sort categories alphabetically
-    const sortedCategories = Object.keys(grouped).sort();
-    const result = {};
-    
-    sortedCategories.forEach(category => {
-      result[category] = grouped[category];
-    });
-    
-    // Add goals section if there are goal activities
-    if (goalActivities.length > 0) {
-      result['_goals'] = goalActivities;
-    }
-    
-    return result;
-  };
+  // Use utility functions for formatting
+  const formatSeriesDetailMemo = useCallback((detail) => formatSeriesDetail(detail, t), [t]);
+  
+  // Group activities using utility function
+  const groupedActivities = useMemo(() => groupActivitiesByCategory(activities), [activities]);
 
   // Toggle category function
   const toggleCategory = (categoryKey) => {
@@ -712,16 +191,8 @@ const DailyFlowScreen = () => {
     }));
   };
 
-  // Star rating functions
-  const handleStarPress = (starIndex) => {
-    const newRating = starIndex + 1;
-    setFormData(prev => ({
-      ...prev,
-      rating: prev.rating === newRating ? 0 : newRating
-    }));
-  };
-
-  const renderStars = () => {
+  // Render stars function (still needed for UI)
+  const renderStars = useCallback(() => {
     const stars = [];
     for (let i = 0; i < 10; i++) {
       const isFilled = formData.rating >= i + 1;
@@ -742,37 +213,15 @@ const DailyFlowScreen = () => {
       );
     }
     return stars;
-  };
-
-  // Add season-episode row
-  const addSeasonEpisodeRow = () => {
-    setSeasonEpisodes(prev => [...prev, { season: '', episode: '' }]);
-  };
-
-  // Remove season-episode row
-  const removeSeasonEpisodeRow = (index) => {
-    if (seasonEpisodes.length > 1) {
-      setSeasonEpisodes(prev => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  // Update season-episode value
-  const updateSeasonEpisode = (index, field, value) => {
-    setSeasonEpisodes(prev => prev.map((item, i) => 
-      i === index ? { ...item, [field]: value } : item
-    ));
-  };
+  }, [formData.rating, handleStarPress]);
 
 
   const addActivity = useCallback(() => {
     // Update all states at once
     setEditingActivity(null);
-    setIsQuickAdd(false); // Normal add mode
-    setFormData({ title: '', category: '', detail: '', season: '', episode: '', isCompleted: false, rating: 0 });
-    setSeasonEpisodes([{ season: '', episode: '' }]);
-    setDuration({ hours: '', minutes: '' });
+    resetForm();
     setModalType('add');
-  }, []);
+  }, [resetForm]);
 
   // Open add modal with pre-filled data from QuickAddMenu
   const openAddModalWithActivity = useCallback((activity) => {
@@ -826,12 +275,9 @@ const DailyFlowScreen = () => {
 
   const closeModal = useCallback(() => {
     setModalType(null);
-    setIsQuickAdd(false); // Reset quick add mode
-    setDuration({ hours: '', minutes: '' });
     setEditingActivity(null);
-    setFormData({ title: '', category: '', detail: '', season: '', episode: '', isCompleted: false, rating: 0 });
-    setSeasonEpisodes([{ season: '', episode: '' }]);
-  }, []);
+    resetForm();
+  }, [resetForm]);
 
   // Handle quick add activity (from QuickAddMenu)
   const handleQuickAddActivity = async (newActivity) => {
@@ -1030,9 +476,9 @@ const DailyFlowScreen = () => {
         
         if (user) {
           try {
-            const firebaseId = await addActivityToFirebase(newActivity);
+        const firebaseId = await addActivityToFirebase(newActivity);
             if (firebaseId) {
-              newActivity.firebaseId = firebaseId;
+        newActivity.firebaseId = firebaseId;
             }
           } catch (firebaseError) {
             // Firebase'e ekleme başarısız oldu
@@ -1188,8 +634,8 @@ const DailyFlowScreen = () => {
                 }
               }
               
-              // Layout animasyonu ile silme efekti
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            // Layout animasyonu ile silme efekti
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               // Filter by both id and firebaseId to ensure complete removal
               const updatedActivities = activities.filter(a => {
                 // Remove if id matches
@@ -1285,8 +731,8 @@ const DailyFlowScreen = () => {
           return true;
         });
         // Duplicate check
-        const uniqueActivities = removeDuplicates(updatedActivities);
-        setActivities(uniqueActivities);
+      const uniqueActivities = removeDuplicates(updatedActivities);
+      setActivities(uniqueActivities);
         
         // Save activities for the activity's date
         const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : currentDate;
@@ -1301,7 +747,7 @@ const DailyFlowScreen = () => {
         // Clear animation value and reset swipe state using functional update
         setSwipeAnimations(prev => {
           const newSwipeAnimations = { ...prev };
-          delete newSwipeAnimations[activity.id];
+      delete newSwipeAnimations[activity.id];
           return newSwipeAnimations;
         });
         
@@ -1455,105 +901,7 @@ const DailyFlowScreen = () => {
   };
 
 
-  const navigateDate = useCallback((direction) => {
-    // Always navigate day by day (no activity-based navigation)
-    setCurrentDate(prevDate => {
-      const newDate = new Date(prevDate);
-      newDate.setDate(newDate.getDate() + direction);
-      return newDate;
-    });
-  }, []);
 
-  // PanResponder for date navigation swipe - simpler and more reliable
-  const screenWidth = Dimensions.get('window').width;
-  const dateSwipeResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        // Don't capture if scrolling
-        if (isScrolling.current) return false;
-        
-        const pageY = evt.nativeEvent.pageY;
-        const pageX = evt.nativeEvent.pageX;
-        
-        // Don't capture if touching header area or navigation buttons
-        if (pageY < 120 || pageX < 60 || pageX > screenWidth - 60) {
-          return false;
-        }
-        
-        // Check if horizontal movement is significant compared to vertical
-        const horizontalMovement = Math.abs(gestureState.dx);
-        const verticalMovement = Math.abs(gestureState.dy);
-        
-        // Only capture if horizontal movement is clearly dominant (2x ratio)
-        // Lowered threshold to 15 to match minSwipeDistance of 20
-        if (horizontalMovement > 15 && horizontalMovement > verticalMovement * 2) {
-          gestureDirection.current = 'horizontal';
-          return true;
-        }
-        
-        return false;
-      },
-      onPanResponderGrant: (evt) => {
-        touchStartX.current = evt.nativeEvent.pageX;
-        touchStartY.current = evt.nativeEvent.pageY;
-        hasMoved.current = false;
-      },
-      onPanResponderMove: (evt, gestureState) => {
-        // Check if user is scrolling vertically
-        if (Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.2) {
-          gestureDirection.current = 'vertical';
-          isScrolling.current = true;
-          return;
-        }
-        
-        hasMoved.current = true;
-      },
-      onPanResponderRelease: (evt, gestureState) => {
-        // Reset scrolling flag
-        setTimeout(() => {
-          isScrolling.current = false;
-          gestureDirection.current = null;
-        }, 200);
-        
-        // If it was vertical scrolling, don't navigate
-        if (gestureDirection.current === 'vertical' || !hasMoved.current) {
-          touchStartX.current = 0;
-          touchStartY.current = 0;
-          return;
-        }
-        
-        const horizontalMovement = gestureState.dx;
-        const verticalMovement = Math.abs(gestureState.dy);
-        const minSwipeDistance = 20;
-        
-        // Only navigate if horizontal swipe is significant
-        if (Math.abs(horizontalMovement) > minSwipeDistance && 
-            Math.abs(horizontalMovement) > verticalMovement * 1.5) {
-                     
-          if (horizontalMovement > 0) {
-            // Swipe right - go to previous day (yesterday)
-            navigateDate(-1);
-          } else {
-            // Swipe left - go to next day (tomorrow)
-            navigateDate(1);
-          }
-        }
-        
-        // Reset
-        touchStartX.current = 0;
-        touchStartY.current = 0;
-        hasMoved.current = false;
-      },
-      onPanResponderTerminate: () => {
-        isScrolling.current = false;
-        gestureDirection.current = null;
-        touchStartX.current = 0;
-        touchStartY.current = 0;
-        hasMoved.current = false;
-      },
-    })
-  ).current;
 
 
   return (
@@ -1596,16 +944,8 @@ const DailyFlowScreen = () => {
         ref={scrollViewRef}
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContentContainer}
-        onScrollBeginDrag={() => { 
-          isScrolling.current = true;
-          gestureDirection.current = 'vertical';
-        }}
-        onScrollEndDrag={() => { 
-          setTimeout(() => {
-            isScrolling.current = false;
-            gestureDirection.current = null;
-          }, 200);
-        }}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onScrollEndDrag={handleScrollEndDrag}
         scrollEventThrottle={16}
       >
         {activities.length === 0 ? (
@@ -1614,7 +954,7 @@ const DailyFlowScreen = () => {
             <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>{t('activity.addFirstActivity')}</Text>
           </View>
         ) : (
-          Object.entries(groupActivitiesByCategory()).map(([categoryKey, categoryActivities]) => {
+          Object.entries(groupedActivities).map(([categoryKey, categoryActivities]) => {
             const isGoalsSection = categoryKey === '_goals';
             const category = isGoalsSection ? null : CATEGORIES[categoryKey];
             
@@ -1672,7 +1012,7 @@ const DailyFlowScreen = () => {
                       isDeleting={isDeleting}
                       slideAnimation={slideAnimation}
                       colors={colors}
-                      formatSeriesDetail={formatSeriesDetail}
+                      formatSeriesDetail={formatSeriesDetailMemo}
                       getRatingColor={getRatingColor}
                       onEdit={() => {
                             if (isSwiped) {
@@ -1778,13 +1118,7 @@ const DailyFlowScreen = () => {
         onDateSelect={selectDate}
         onShowMonthPicker={() => setShowMonthPicker(true)}
         onShowYearPicker={() => setShowYearPicker(true)}
-        onGoToToday={() => {
-                  const today = new Date();
-                  setCurrentDate(today);
-                  setSelectedYear(today.getFullYear());
-                  setSelectedMonth(today.getMonth());
-                  setShowDatePicker(false);
-                }}
+        onGoToToday={goToToday}
       />
 
       {/* Ay Seçici Modal */}
