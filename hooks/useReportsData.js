@@ -74,18 +74,24 @@ export const useMonthlyCategoryData = (activities, currentMonth, t) => {
   const CATEGORIES = getCategoriesSimple(t);
   
   return useMemo(() => {
-    const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-    const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    // Use string comparison to avoid timezone issues (YYYY-MM-DD format allows string comparison)
+    const monthStartStr = formatLocalDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
+    const monthEndStr = formatLocalDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0));
 
     const monthActivities = activities.filter(activity => {
-      const activityDate = new Date(activity.timestamp);
+      // Use activity.date if available, otherwise use timestamp
+      const activityDateStr = activity.date || formatLocalDate(new Date(activity.timestamp));
+      
+      // String comparison to avoid timezone issues
+      const isInMonth = activityDateStr >= monthStartStr && activityDateStr <= monthEndStr;
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const activityDateObj = activity.date ? new Date(activity.date + 'T00:00:00') : new Date(activity.timestamp);
       activityDateObj.setHours(0, 0, 0, 0);
       const isFutureDate = activityDateObj > today;
       const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
-      return activityDate >= monthStart && activityDate <= monthEnd && !isGoal;
+      return isInMonth && !isGoal;
     });
 
     const categoryData = {};
@@ -208,28 +214,38 @@ export const useYearlyCategoryData = (activities, currentYear, t) => {
 // Monthly daily data
 export const useMonthlyDailyData = (activities, currentMonth) => {
   return useMemo(() => {
-    const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-    const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    // Use string comparison to avoid timezone issues (YYYY-MM-DD format allows string comparison)
+    const monthStartStr = formatLocalDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
+    const monthEndStr = formatLocalDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0));
 
     const monthActivities = activities.filter(activity => {
-      const activityDate = new Date(activity.timestamp);
+      // Use activity.date if available, otherwise use timestamp
+      const activityDateStr = activity.date || formatLocalDate(new Date(activity.timestamp));
+      
+      // String comparison to avoid timezone issues
+      const isInMonth = activityDateStr >= monthStartStr && activityDateStr <= monthEndStr;
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const activityDateObj = activity.date ? new Date(activity.date + 'T00:00:00') : new Date(activity.timestamp);
       activityDateObj.setHours(0, 0, 0, 0);
       const isFutureDate = activityDateObj > today;
       const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
-      return activityDate >= monthStart && activityDate <= monthEnd && !isGoal;
+      return isInMonth && !isGoal;
     });
 
     const daysData = {};
     
-    for (let day = 1; day <= monthEnd.getDate(); day++) {
+    // Get the last day of the month
+    const lastDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+    
+    for (let day = 1; day <= lastDayOfMonth; day++) {
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
       const dateKey = formatLocalDate(date);
       
       const dayActivities = monthActivities.filter(activity => {
-        const activityDate = formatLocalDate(new Date(activity.timestamp));
+        // Use activity.date if available, otherwise use timestamp
+        const activityDate = activity.date || formatLocalDate(new Date(activity.timestamp));
         return activityDate === dateKey;
       });
       
