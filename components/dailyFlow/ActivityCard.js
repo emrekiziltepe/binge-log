@@ -41,34 +41,36 @@ export default function ActivityCard({
 
   return (
     <View style={styles.activityCardContainer}>
-      <Animated.View 
-        style={[
-          styles.deleteButtonContainer,
-          {
-            transform: [
-              {
-                translateX: slideAnimation.interpolate({
-                  inputRange: [-70, 0],
-                  outputRange: [0, 70], // -70'de görünür (0), 0'da gizli (70 sağa)
-                  extrapolate: 'clamp',
-                })
-              }
-            ],
-            opacity: slideAnimation.interpolate({
-              inputRange: [-70, -35, 0],
-              outputRange: [1, 0.5, 0],
-              extrapolate: 'clamp',
-            }),
-          }
-        ]}
-      >
-        <TouchableOpacity 
-          style={styles.deleteButton}
-          onPress={() => onSwipeDelete(activity)}
+      {!isDeleting && isSwiped && (
+        <Animated.View 
+          style={[
+            styles.deleteButtonContainer,
+            {
+              transform: [
+                {
+                  translateX: slideAnimation.interpolate({
+                    inputRange: [-70, 0],
+                    outputRange: [0, 70], // -70'de görünür (0), 0'da gizli (70 sağa)
+                    extrapolate: 'clamp',
+                  })
+                }
+              ],
+              opacity: slideAnimation.interpolate({
+                inputRange: [-70, -35, 0],
+                outputRange: [1, 0.5, 0],
+                extrapolate: 'clamp',
+              }),
+            }
+          ]}
         >
-          <TrashIcon size={28} color="#fff" />
-        </TouchableOpacity>
-      </Animated.View>
+          <TouchableOpacity 
+            style={styles.deleteButton}
+            onPress={() => onSwipeDelete(activity)}
+          >
+            <TrashIcon size={28} color="#fff" />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
       
       {/* Aktivite Kartı */}
       <Animated.View
@@ -88,34 +90,36 @@ export default function ActivityCard({
       >
         <View style={styles.activityCardInner}>
           {/* Modern swipe indicator - animated chevrons */}
-          <Animated.View
-            style={[
-              styles.swipeToggleButtonWrapper,
-              {
-                transform: [
-                  {
-                    translateX: slideAnimation.interpolate({
-                      inputRange: [-70, 0],
-                      outputRange: [-70, 0],
-                      extrapolate: 'clamp',
-                    })
-                  }
-                ],
-          }
-        ]}
-          >
-            <TouchableOpacity 
-              style={styles.swipeToggleButton}
-              onPress={onToggleSwipe}
-              hitSlop={{ top: 10, bottom: 10, left: 15, right: 5 }}
-              activeOpacity={0.6}
+          {!isDeleting && (
+            <Animated.View
+              style={[
+                styles.swipeToggleButtonWrapper,
+                {
+                  transform: [
+                    {
+                      translateX: slideAnimation.interpolate({
+                        inputRange: [-70, 0],
+                        outputRange: [-70, 0],
+                        extrapolate: 'clamp',
+                      })
+                    }
+                  ],
+            }
+          ]}
             >
-              <View style={styles.swipeIndicatorContainer}>
-                <View style={[styles.chevronLine, styles.chevronTop, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
-                <View style={[styles.chevronLine, styles.chevronBottom, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
+              <TouchableOpacity 
+                style={styles.swipeToggleButton}
+                onPress={onToggleSwipe}
+                hitSlop={{ top: 10, bottom: 10, left: 15, right: 5 }}
+                activeOpacity={0.6}
+              >
+                <View style={styles.swipeIndicatorContainer}>
+                  <View style={[styles.chevronLine, styles.chevronTop, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
+                  <View style={[styles.chevronLine, styles.chevronBottom, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
           
         <Pressable 
           style={({ pressed }) => [

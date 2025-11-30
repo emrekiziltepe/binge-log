@@ -109,7 +109,39 @@ export const deleteActivityFromFirebase = async (activityId) => {
 
     const activitiesRef = getActivitiesCollection();
     const activityDoc = doc(activitiesRef, activityId);
-    await deleteDoc(activityDoc);
+    
+    // Check if document exists
+    const docSnapshot = await getDoc(activityDoc);
+    
+    if (docSnapshot.exists()) {
+      // If document exists, delete it
+      await deleteDoc(activityDoc);
+    } else {
+      // If document doesn't exist by ID, try to find it by the 'id' field in the data
+      const querySnapshot = await getDocs(query(
+        activitiesRef,
+        where('id', '==', activityId)
+      ));
+      
+      if (!querySnapshot.empty) {
+        // Found existing document with matching id field, delete it
+        const existingDoc = querySnapshot.docs[0];
+        await deleteDoc(existingDoc.ref);
+      } else {
+        // Also try to find by firebaseId field (for activities that were synced)
+        const querySnapshot2 = await getDocs(query(
+          activitiesRef,
+          where('firebaseId', '==', activityId)
+        ));
+        
+        if (!querySnapshot2.empty) {
+          const existingDoc = querySnapshot2.docs[0];
+          await deleteDoc(existingDoc.ref);
+        } else {
+          console.warn('Activity not found in Firebase for deletion:', activityId);
+        }
+      }
+    }
   } catch (error) {
     console.error('Firebase delete activity error:', error);
     throw error;

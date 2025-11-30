@@ -78,6 +78,9 @@ const DailyFlowScreen = () => {
   // Duration for sport (hours and minutes)
   const [duration, setDuration] = useState({ hours: '', minutes: '' });
   
+  // Quick add mode flag (hides category selection and disables title editing)
+  const [isQuickAdd, setIsQuickAdd] = useState(false);
+  
   // Statistics variables
   const [dailyStats, setDailyStats] = useState({
     totalActivities: 0,
@@ -433,8 +436,8 @@ const DailyFlowScreen = () => {
         
         const uniqueActivities = removeDuplicates(filteredActivities);
         setActivities(uniqueActivities);
-        // Also save Firebase data to AsyncStorage (for offline backup)
-        await AsyncStorage.setItem(userSpecificKey, JSON.stringify(firebaseActivities));
+        // Also save Firebase data to AsyncStorage (for offline backup) - only save filtered activities for this date
+        await AsyncStorage.setItem(userSpecificKey, JSON.stringify(filteredActivities));
       } catch (firebaseError) {
         // Only fetch from AsyncStorage if Firebase fails
         const storedActivities = await AsyncStorage.getItem(userSpecificKey);
@@ -478,8 +481,14 @@ const DailyFlowScreen = () => {
       const dateToSave = targetDate || currentDate;
       const dateKey = formatLocalDate(dateToSave);
       
+      // Filter activities to only include those for the target date
+      const activitiesForDate = newActivities.filter(activity => {
+        const activityDate = activity.date || formatLocalDate(new Date(activity.timestamp));
+        return activityDate === dateKey;
+      });
+      
       // Duplicate check
-      const uniqueActivities = removeDuplicates(newActivities);
+      const uniqueActivities = removeDuplicates(activitiesForDate);
       
       if (!user) {
         // Old format for non-logged-in users
@@ -758,19 +767,148 @@ const DailyFlowScreen = () => {
   const addActivity = useCallback(() => {
     // Update all states at once
     setEditingActivity(null);
+    setIsQuickAdd(false); // Normal add mode
     setFormData({ title: '', category: '', detail: '', season: '', episode: '', isCompleted: false, rating: 0 });
     setSeasonEpisodes([{ season: '', episode: '' }]);
     setDuration({ hours: '', minutes: '' });
     setModalType('add');
   }, []);
 
+  // Open add modal with pre-filled data from QuickAddMenu
+  const openAddModalWithActivity = useCallback((activity) => {
+    setEditingActivity(null);
+    setIsQuickAdd(true); // Enable quick add mode
+    
+    // Parse existing detail if available
+    let seasonEpisodesArray = [{ season: '', episode: '' }];
+    let detailValue = '';
+    
+    if (activity.type === 'series' && activity.detail) {
+      // Parse existing season-episode data
+      if (activity.detail.includes(';')) {
+        const seasonEpisodes = activity.detail.split(';').map(se => se.trim());
+        seasonEpisodesArray = seasonEpisodes.map(se => {
+          const parts = se.split(',');
+          if (parts.length >= 2) {
+            return {
+              season: parts[0].trim(),
+              episode: parts.slice(1).join(',').trim()
+            };
+          }
+          return { season: '', episode: '' };
+        });
+      } else {
+        const parts = activity.detail.split(',');
+        if (parts.length >= 2) {
+          seasonEpisodesArray = [{
+            season: parts[0].trim(),
+            episode: parts.slice(1).join(',').trim()
+          }];
+        }
+      }
+    } else {
+      detailValue = activity.detail || '';
+    }
+    
+    setFormData({
+      title: activity.title,
+      category: activity.type,
+      detail: detailValue,
+      season: '',
+      episode: '',
+      isCompleted: false,
+      rating: 0
+    });
+    setSeasonEpisodes(seasonEpisodesArray);
+    setDuration({ hours: '', minutes: '' });
+    setModalType('add');
+  }, []);
+
   const closeModal = useCallback(() => {
     setModalType(null);
+    setIsQuickAdd(false); // Reset quick add mode
     setDuration({ hours: '', minutes: '' });
     setEditingActivity(null);
     setFormData({ title: '', category: '', detail: '', season: '', episode: '', isCompleted: false, rating: 0 });
     setSeasonEpisodes([{ season: '', episode: '' }]);
   }, []);
+
+  // Handle quick add activity (from QuickAddMenu)
+  const handleQuickAddActivity = async (newActivity) => {
+    try {
+      // Determine if it's a goal
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const activityDate = newActivity.date ? new Date(newActivity.date + 'T00:00:00') : currentDate;
+      const activityDateOnly = new Date(activityDate);
+      activityDateOnly.setHours(0, 0, 0, 0);
+      const isFutureDate = activityDateOnly > today;
+      const isGoal = isFutureDate && !newActivity.isCompleted;
+
+      // Update activity with goal status
+      const activityToSave = {
+        ...newActivity,
+        isGoal: isGoal,
+        isCompleted: newActivity.isCompleted || false,
+        rating: newActivity.rating || 0,
+      };
+
+      // Add to Firebase if user is logged in
+      const user = getCurrentUser();
+      if (user) {
+        try {
+          const firebaseId = await addActivityToFirebase(activityToSave);
+          if (firebaseId) {
+            activityToSave.firebaseId = firebaseId;
+          }
+        } catch (firebaseError) {
+          console.error('Firebase add failed, saving to AsyncStorage only:', firebaseError);
+        }
+      }
+
+      // Check for duplicates before adding (by title, type, date, and detail)
+      const isDuplicate = activities.some(a => 
+        a.title === activityToSave.title &&
+        a.type === activityToSave.type &&
+        a.date === activityToSave.date &&
+        a.detail === activityToSave.detail
+      );
+      
+      if (isDuplicate) {
+        Alert.alert(t('errors.error'), t('errors.duplicateActivity') || 'This activity already exists for this date.');
+        return;
+      }
+      
+      // Update activities state
+      const updatedActivities = [...activities, activityToSave];
+      const uniqueActivities = removeDuplicates(updatedActivities);
+
+      // Configure layout animation
+      try {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      } catch (layoutError) {
+        console.warn('LayoutAnimation error:', layoutError);
+      }
+
+      setActivities(uniqueActivities);
+      
+      // Save to AsyncStorage
+      await saveActivities(uniqueActivities, activityDate);
+      
+      // Don't reload from Firebase here - it can cause duplicates if delete wasn't complete
+      // The activity is already added to state and saved to AsyncStorage
+      // Firebase sync will happen automatically on next app load or manual sync
+      
+      // Calculate streak
+      calculateStreak().catch(err => console.error('Streak calculation error:', err));
+      
+      // Save to recent activities
+      saveRecentActivity(activityToSave);
+    } catch (error) {
+      console.error('Quick add activity error:', error);
+      Alert.alert(t('errors.error'), t('errors.saveError'));
+    }
+  };
 
   const saveActivity = async () => {
     if (!formData.title.trim()) {
@@ -930,15 +1068,9 @@ const DailyFlowScreen = () => {
         : activityDate;
       await saveActivities(uniqueActivities, activityDateForSave);
       
-      // If user is logged in, reload activities from Firebase to ensure sync
-      const user = getCurrentUser();
-      if (user && !editingActivity) {
-        // For new activities, wait a bit then reload to get the latest from Firebase
-        // This ensures Firebase write has completed
-        setTimeout(() => {
-          loadActivities();
-        }, 500);
-      }
+      // Don't reload from Firebase here - it can cause duplicates
+      // The activity is already added to state and saved to AsyncStorage
+      // Firebase sync will happen automatically on next app load or manual sync
       
       // Calculate streak asynchronously without blocking
       calculateStreak().catch(err => console.error('Streak calculation error:', err));
@@ -1031,21 +1163,62 @@ const DailyFlowScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Firebase'den sil
-              await deleteActivityFromFirebase(activity.id);
+              // Immediately close swipe state and reset animation if this activity is swiped
+              if (swipedActivityId === activity.id) {
+                setSwipedActivityId(null);
+                // Reset animation immediately
+                const slideAnimation = swipeAnimations[activity.id];
+                if (slideAnimation) {
+                  slideAnimation.setValue(0);
+                }
+              }
               
-            // Layout animasyonu ile silme efekti
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            const updatedActivities = activities.filter(a => a.id !== activity.id);
+              // Delete from Firebase if user is logged in
+              const user = getCurrentUser();
+              if (user) {
+                // Try to delete using firebaseId first, then fall back to id
+                const firebaseDocId = activity.firebaseId || activity.id;
+                try {
+                  await deleteActivityFromFirebase(firebaseDocId);
+                  console.log('Activity deleted from Firebase:', firebaseDocId);
+                } catch (firebaseError) {
+                  console.error('Firebase delete error:', firebaseError);
+                  // Continue with local delete even if Firebase fails
+                  // The activity will be removed from local state and AsyncStorage
+                }
+              }
+              
+              // Layout animasyonu ile silme efekti
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              // Filter by both id and firebaseId to ensure complete removal
+              const updatedActivities = activities.filter(a => {
+                // Remove if id matches
+                if (a.id === activity.id) return false;
+                // Remove if firebaseId matches (if both have firebaseId)
+                if (activity.firebaseId && a.firebaseId && a.firebaseId === activity.firebaseId) return false;
+                return true;
+              });
               // Duplicate check
-              const uniqueActivities = updatedActivities.filter((activity, index, self) => 
-                index === self.findIndex(a => a.id === activity.id)
-              );
+              const uniqueActivities = removeDuplicates(updatedActivities);
               setActivities(uniqueActivities);
-              saveActivities(uniqueActivities);
+              
+              // Save activities for the activity's date
+              const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : currentDate;
+              await saveActivities(uniqueActivities, activityDate);
+              
+              // Don't reload from Firebase - it can bring back deleted activities
+              // The activity is already removed from state and AsyncStorage
+              
+              // Clear animation value for deleted activity
+              setSwipeAnimations(prev => {
+                const newSwipeAnimations = { ...prev };
+                delete newSwipeAnimations[activity.id];
+                return newSwipeAnimations;
+              });
+              
               calculateStreak(); // Update streak
             } catch (error) {
-              console.error('Firebase delete error:', error);
+              console.error('Delete activity error:', error);
               Alert.alert(t('errors.error'), t('errors.deleteError'));
             }
           },
@@ -1054,11 +1227,30 @@ const DailyFlowScreen = () => {
     );
   };
 
-  const handleSwipeDelete = (activity) => {
+  const handleSwipeDelete = async (activity) => {
+    // Set deleting state FIRST to immediately hide delete button
     setDeletingActivityId(activity.id);
     
-    // Modern delete animation like iPhone Notes
-    const slideAnimation = swipeAnimations[activity.id] || new Animated.Value(0);
+    // Immediately close swipe state and reset animation if this activity is swiped
+    if (swipedActivityId === activity.id) {
+      setSwipedActivityId(null);
+    }
+    
+    // Reset animation immediately to hide delete button
+    const existingAnimation = swipeAnimations[activity.id];
+    if (existingAnimation) {
+      existingAnimation.setValue(0);
+    }
+    
+    // Get or create animation for this activity
+    let slideAnimation = existingAnimation || swipeAnimations[activity.id];
+    if (!slideAnimation) {
+      slideAnimation = new Animated.Value(0);
+      setSwipeAnimations(prev => ({
+        ...prev,
+        [activity.id]: slideAnimation
+      }));
+    }
     
     Animated.parallel([
       // Quickly swipe card to the left
@@ -1067,26 +1259,60 @@ const DailyFlowScreen = () => {
         duration: 300,
         useNativeDriver: true,
       }),
-      // Opacity'yi azalt
-      Animated.timing(slideAnimation, {
-        toValue: -400,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // Animasyon bittikten sonra sil
-      const updatedActivities = activities.filter(a => a.id !== activity.id);
-      // Duplicate check
-      const uniqueActivities = removeDuplicates(updatedActivities);
-      setActivities(uniqueActivities);
-      saveActivities(uniqueActivities);
-      setSwipedActivityId(null);
-      setDeletingActivityId(null);
-      
-      // Clear animation value
-      const newSwipeAnimations = { ...swipeAnimations };
-      delete newSwipeAnimations[activity.id];
-      setSwipeAnimations(newSwipeAnimations);
+    ]).start(async () => {
+      try {
+        // Delete from Firebase if user is logged in
+        const user = getCurrentUser();
+        if (user) {
+          // Try to delete using firebaseId first, then fall back to id
+          const firebaseDocId = activity.firebaseId || activity.id;
+          try {
+            await deleteActivityFromFirebase(firebaseDocId);
+            console.log('Activity deleted from Firebase:', firebaseDocId);
+          } catch (firebaseError) {
+            console.error('Firebase delete error:', firebaseError);
+            // Continue with local delete even if Firebase fails
+            // The activity will be removed from local state and AsyncStorage
+          }
+        }
+        
+        // Animasyon bittikten sonra sil - filter by both id and firebaseId
+        const updatedActivities = activities.filter(a => {
+          // Remove if id matches
+          if (a.id === activity.id) return false;
+          // Remove if firebaseId matches (if both have firebaseId)
+          if (activity.firebaseId && a.firebaseId && a.firebaseId === activity.firebaseId) return false;
+          return true;
+        });
+        // Duplicate check
+        const uniqueActivities = removeDuplicates(updatedActivities);
+        setActivities(uniqueActivities);
+        
+        // Save activities for the activity's date
+        const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : currentDate;
+        await saveActivities(uniqueActivities, activityDate);
+        
+        // Don't reload from Firebase - it can bring back deleted activities
+        // The activity is already removed from state and AsyncStorage
+        
+        // Calculate streak
+        calculateStreak().catch(err => console.error('Streak calculation error:', err));
+        
+        // Clear animation value and reset swipe state using functional update
+        setSwipeAnimations(prev => {
+          const newSwipeAnimations = { ...prev };
+          delete newSwipeAnimations[activity.id];
+          return newSwipeAnimations;
+        });
+        
+        // Reset swipe state if the deleted activity was the swiped one
+        setSwipedActivityId(prev => prev === activity.id ? null : prev);
+        setDeletingActivityId(null);
+      } catch (error) {
+        console.error('Delete activity error:', error);
+        setSwipedActivityId(null);
+        setDeletingActivityId(null);
+      }
     });
   };
 
@@ -1206,11 +1432,11 @@ const DailyFlowScreen = () => {
         }
         
         setActivities(uniqueActivities);
-        saveActivities(uniqueActivities);
+        await saveActivities(uniqueActivities, todayDateString);
         calculateStreak();
         
-        // Reload activities to ensure sync with Firebase
-        loadActivities();
+        // Don't reload from Firebase - it can bring back old data
+        // The activity is already updated in state and AsyncStorage
         
         Alert.alert(
           t('activity.completedGoal'),
@@ -1421,9 +1647,21 @@ const DailyFlowScreen = () => {
                   const isDeleting = deletingActivityId === activity.id;
                   // Initialize animation for this activity
                   if (!swipeAnimations[activity.id]) {
-                    swipeAnimations[activity.id] = new Animated.Value(0);
+                    setSwipeAnimations(prev => ({
+                      ...prev,
+                      [activity.id]: new Animated.Value(0)
+                    }));
                   }
-                  const slideAnimation = swipeAnimations[activity.id];
+                  // Get animation value - use existing or create new one
+                  let slideAnimation = swipeAnimations[activity.id];
+                  if (!slideAnimation) {
+                    slideAnimation = new Animated.Value(0);
+                    // Initialize in state for next render
+                    setSwipeAnimations(prev => ({
+                      ...prev,
+                      [activity.id]: slideAnimation
+                    }));
+                  }
                   
                   return (
                     <ActivityCard
@@ -1522,12 +1760,9 @@ const DailyFlowScreen = () => {
         colors={colors}
         currentDate={currentDate}
         onClose={() => setShowQuickAdd(false)}
-        onActivityAdded={(uniqueActivities) => {
-          setActivities(uniqueActivities);
-          saveActivities(uniqueActivities);
-                              setShowQuickAdd(false);
-        }}
+        onActivityAdded={handleQuickAddActivity}
         onSaveRecentActivity={saveRecentActivity}
+        onOpenAddModal={openAddModalWithActivity}
       />
 
       {/* Tarih Seçici Modal */}
@@ -1590,6 +1825,7 @@ const DailyFlowScreen = () => {
         removeSeasonEpisodeRow={removeSeasonEpisodeRow}
         handleCompletionToggle={handleCompletionToggle}
         renderStars={renderStars}
+        isQuickAdd={isQuickAdd}
       />
 
 

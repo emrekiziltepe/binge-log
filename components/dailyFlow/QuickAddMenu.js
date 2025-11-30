@@ -16,89 +16,18 @@ export default function QuickAddMenu({
   currentDate,
   onClose,
   onActivityAdded,
-  onSaveRecentActivity
+  onSaveRecentActivity,
+  onOpenAddModal
 }) {
   const { t } = useTranslation();
 
   if (!visible || recentActivities.length === 0) return null;
 
   const handleQuickAdd = (activity) => {
-    // Edit details for categories that require details
-    if (activity.type === 'series' || activity.type === 'book') {
-      const category = CATEGORIES[activity.type];
-      const promptTitle = activity.type === 'series' ? `📺 ${t('activity.seriesDetail')}` : `📚 ${t('activity.bookDetail')}`;
-      const promptMessage = activity.type === 'series'
-        ? t('activity.seriesInputHelp')
-        : t('activity.pagesInputHelp');
-
-      Alert.prompt(
-        promptTitle,
-        promptMessage,
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          {
-            text: t('common.save'),
-            onPress: (input) => {
-              if (input && input.trim()) {
-                let detail = input.trim();
-
-                // Special validation for series
-                if (activity.type === 'series') {
-                  const parts = detail.replace(/[^0-9,]/g, '').split(/[, ]+/);
-                  const season = parts[0];
-                  const episode = parts[1];
-
-                  if (!season || !episode || parseInt(season) <= 0 || parseInt(episode) <= 0) {
-                    Alert.alert(
-                      t('errors.invalidFormatTitle'),
-                      t('errors.invalidFormat'),
-                      [{ text: t('common.ok') }]
-                    );
-                    return;
-                  }
-
-                  detail = `${t('activity.season')} ${season}, ${t('activity.episode')} ${episode}`;
-                }
-
-                const newActivity = {
-                  id: Date.now().toString(),
-                  title: activity.title,
-                  type: activity.type,
-                  detail: detail,
-                  timestamp: new Date().toISOString(),
-                  date: formatLocalDate(currentDate),
-                };
-
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                const updatedActivities = [...activities, newActivity];
-                const uniqueActivities = removeDuplicates(updatedActivities);
-                onActivityAdded(uniqueActivities);
-                onSaveRecentActivity(newActivity);
-                onClose();
-              }
-            },
-          },
-        ],
-        'plain-text',
-        activity.detail || '',
-        'default'
-      );
-    } else {
-      // Direct addition for other categories
-      const newActivity = {
-        id: Date.now().toString(),
-        title: activity.title,
-        type: activity.type,
-        detail: activity.detail,
-        timestamp: new Date().toISOString(),
-        date: formatLocalDate(currentDate),
-      };
-
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      const updatedActivities = [...activities, newActivity];
-      const uniqueActivities = removeDuplicates(updatedActivities);
-      onActivityAdded(uniqueActivities);
-      onClose();
+    // Open normal add modal for all activities (allows full editing)
+    onClose();
+    if (onOpenAddModal) {
+      onOpenAddModal(activity);
     }
   };
 

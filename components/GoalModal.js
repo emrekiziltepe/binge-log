@@ -171,26 +171,26 @@ const GoalModal = ({ visible, onClose }) => {
                     showsVerticalScrollIndicator={true}
                     style={styles.dropdownScrollView}
                   >
-                    {Object.entries(CATEGORIES).map(([categoryKey, category]) => (
-                      <TouchableOpacity
-                        key={categoryKey}
-                        style={[
-                          styles.dropdownItem,
-                          selectedCategory === categoryKey && { backgroundColor: colors.surfaceSecondary }
-                        ]}
-                        onPress={() => {
-                          setSelectedCategory(categoryKey);
-                          setShowCategoryDropdown(false);
-                        }}
-                      >
-                        <Text style={[styles.dropdownItemText, { color: colors.text }]}>
-                          {category.emoji} {t(category.nameKey)}
-                        </Text>
-                        {selectedCategory === categoryKey && (
-                          <Ionicons name="checkmark" size={20} color={colors.primary} />
-                        )}
-                      </TouchableOpacity>
-                    ))}
+                  {Object.entries(CATEGORIES).map(([categoryKey, category]) => (
+                    <TouchableOpacity
+                      key={categoryKey}
+                      style={[
+                        styles.dropdownItem,
+                        selectedCategory === categoryKey && { backgroundColor: colors.surfaceSecondary }
+                      ]}
+                      onPress={() => {
+                        setSelectedCategory(categoryKey);
+                        setShowCategoryDropdown(false);
+                      }}
+                    >
+                      <Text style={[styles.dropdownItemText, { color: colors.text }]}>
+                        {category.emoji} {t(category.nameKey)}
+                      </Text>
+                      {selectedCategory === categoryKey && (
+                        <Ionicons name="checkmark" size={20} color={colors.primary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
                   </ScrollView>
                 </View>
               )}

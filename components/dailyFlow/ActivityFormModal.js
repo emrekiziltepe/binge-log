@@ -32,7 +32,8 @@ export default function ActivityFormModal({
   addSeasonEpisodeRow,
   removeSeasonEpisodeRow,
   handleCompletionToggle,
-  renderStars
+  renderStars,
+  isQuickAdd = false
 }) {
   const { t } = useTranslation();
   const scrollViewRef = useRef(null);
@@ -67,45 +68,50 @@ export default function ActivityFormModal({
                   <Text style={[styles.inputLabel, { color: colors.text }]}>{t('activity.activityTitle')}</Text>
                   <TextInput
                     style={[styles.textInput, {
-                      backgroundColor: colors.inputBackground,
+                      backgroundColor: isQuickAdd ? colors.surfaceSecondary : colors.inputBackground,
                       borderColor: colors.inputBorder,
-                      color: colors.inputText
+                      color: isQuickAdd ? colors.textSecondary : colors.inputText
                     }]}
                     value={formData.title}
                     onChangeText={(text) => setFormData({ ...formData, title: text })}
                     placeholder={t('activity.activityTitle')}
                     placeholderTextColor={colors.placeholder}
                     returnKeyType="next"
+                    editable={!isQuickAdd}
                     testID="activity-title-input"
                   />
 
-                  {/* Kategori Seçimi */}
-                  <Text style={[styles.inputLabel, { color: colors.text }]}>{t('activity.category')}</Text>
-                  <View style={styles.categoryGrid}>
-                    {Object.entries(CATEGORIES).map(([key, category]) => (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.categoryButton,
-                          {
-                            backgroundColor: formData.category === key ? colors.surfaceSecondary : colors.surfaceSecondary,
-                            borderColor: formData.category === key ? colors.primary : colors.border,
-                          },
-                          formData.category === key && { borderColor: colors.primary }
-                        ]}
-                        onPress={() => {
-                          Keyboard.dismiss();
-                          setFormData({ ...formData, category: key });
-                        }}
-                        testID={`category-button-${key}`}
-                      >
-                        <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                        <Text style={[styles.categoryName, { color: formData.category === key ? colors.primary : colors.text }]}>
-                          {category.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  {/* Kategori Seçimi - Hidden in quick add mode */}
+                  {!isQuickAdd && (
+                    <>
+                      <Text style={[styles.inputLabel, { color: colors.text }]}>{t('activity.category')}</Text>
+                      <View style={styles.categoryGrid}>
+                        {Object.entries(CATEGORIES).map(([key, category]) => (
+                          <TouchableOpacity
+                            key={key}
+                            style={[
+                              styles.categoryButton,
+                              {
+                                backgroundColor: formData.category === key ? colors.surfaceSecondary : colors.surfaceSecondary,
+                                borderColor: formData.category === key ? colors.primary : colors.border,
+                              },
+                              formData.category === key && { borderColor: colors.primary }
+                            ]}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              setFormData({ ...formData, category: key });
+                            }}
+                            testID={`category-button-${key}`}
+                          >
+                            <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                            <Text style={[styles.categoryName, { color: formData.category === key ? colors.primary : colors.text }]}>
+                              {category.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
 
                   {/* Detay Girişi */}
                   {formData.category && (
