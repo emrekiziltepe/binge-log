@@ -269,7 +269,12 @@
     "cancelled": "Giriş iptal edildi",
     "appleNotSupported": "Apple ile giriş sadece iOS cihazlarda destekleniyor",
     "appleNotAvailable": "Apple ile giriş bu cihazda mevcut değil",
-    "appleAuthFailed": "Apple ile giriş başarısız oldu"
+    "appleAuthFailed": "Apple ile giriş başarısız oldu",
+    "forgotPassword": "Şifremi Unuttum",
+    "passwordResetSent": "Şifre Sıfırlama",
+    "passwordResetEmailSent": "{{email}} adresine şifre sıfırlama linki gönderildi. Lütfen e-postanızı kontrol edin ve şifrenizi sıfırlamak için talimatları takip edin.",
+    "enterEmailForReset": "Şifrenizi sıfırlamak için lütfen e-posta adresinizi girin",
+    "emailRequired": "E-posta gerekli"
   },
   "errors": {
     "error": "Hata",

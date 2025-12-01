@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { registerUser, loginUser, onAuthStateChange, resendEmailVerification, loginWithGoogle, loginWithApple } from '../services/authService';
+import { registerUser, loginUser, onAuthStateChange, resendEmailVerification, loginWithGoogle, loginWithApple, sendPasswordReset } from '../services/authService';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { authStyles } from '../styles/authStyles';
 
@@ -292,6 +292,47 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
               placeholderTextColor={colors.placeholder}
               secureTextEntry
             />
+            {isLogin && (
+              <TouchableOpacity
+                style={styles.forgotPasswordButton}
+                onPress={async () => {
+                  if (!email) {
+                    Alert.alert(t('auth.error'), t('auth.enterEmailForReset'));
+                    return;
+                  }
+                  
+                  if (!validateEmail(email)) {
+                    Alert.alert(t('auth.error'), t('auth.invalidEmail'));
+                    setEmailError(t('auth.invalidEmail'));
+                    return;
+                  }
+                  
+                  setLoading(true);
+                  try {
+                    const result = await sendPasswordReset(email);
+                    if (result.success) {
+                      Alert.alert(
+                        t('auth.passwordResetSent'),
+                        t('auth.passwordResetEmailSent', { email }),
+                        [{ text: t('common.ok') }]
+                      );
+                    } else {
+                      const errorMessage = t(`auth.${result.error}`) || result.error || t('auth.unknownError');
+                      Alert.alert(t('auth.error'), errorMessage);
+                    }
+                  } catch (error) {
+                    Alert.alert(t('auth.error'), error.message);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+              >
+                <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
+                  {t('auth.forgotPassword')}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <TouchableOpacity

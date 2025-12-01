@@ -270,7 +270,12 @@
     "cancelled": "Sign in cancelled",
     "appleNotSupported": "Apple sign-in is only supported on iOS devices",
     "appleNotAvailable": "Apple sign-in is not available on this device",
-    "appleAuthFailed": "Apple sign-in failed"
+    "appleAuthFailed": "Apple sign-in failed",
+    "forgotPassword": "Forgot Password?",
+    "passwordResetSent": "Password Reset",
+    "passwordResetEmailSent": "A password reset link has been sent to {{email}}. Please check your email and follow the instructions to reset your password.",
+    "enterEmailForReset": "Please enter your email address to reset your password",
+    "emailRequired": "Email is required"
   },
   "errors": {
     "error": "Error",

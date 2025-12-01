@@ -130,5 +130,15 @@ export const authStyles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
   },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    padding: 4,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF', // Will be overridden by colors.primary
+  },
 });
 

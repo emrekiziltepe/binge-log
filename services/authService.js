@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   updateProfile,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithCredential,
   GoogleAuthProvider,
   OAuthProvider
@@ -133,6 +134,22 @@ export const resendEmailVerification = async () => {
     return { success: true };
   } catch (error) {
     console.error('Email verification send error:', error);
+    const errorKey = getErrorMessage(error.code);
+    return { success: false, error: errorKey, errorCode: error.code };
+  }
+};
+
+// Send password reset email
+export const sendPasswordReset = async (email) => {
+  try {
+    if (!email) {
+      return { success: false, error: 'emailRequired' };
+    }
+    
+    await sendPasswordResetEmail(auth, email);
+    return { success: true };
+  } catch (error) {
+    console.error('Password reset email send error:', error);
     const errorKey = getErrorMessage(error.code);
     return { success: false, error: errorKey, errorCode: error.code };
   }
