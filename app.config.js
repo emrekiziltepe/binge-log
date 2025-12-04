@@ -67,7 +67,8 @@ const getConfig = () => {
         edgeToEdgeEnabled: true
       },
       web: {
-        favicon: "./assets/favicon.png"
+        favicon: "./assets/favicon.png",
+        bundler: "metro"
       },
       extra: {
         eas: {

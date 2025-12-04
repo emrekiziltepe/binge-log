@@ -50,4 +50,5 @@ env/
 # coverage
 coverage
 
-
+# testsprite
+testsprite_tests

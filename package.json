@@ -13,6 +13,8 @@
     "ios:dev": "EXPO_PUBLIC_ENV=development expo start --ios",
     "ios:prod": "EXPO_PUBLIC_ENV=production expo start --ios",
     "web": "expo start --web",
+    "web:dev": "EXPO_PUBLIC_ENV=development expo start --web",
+    "web:test": "EXPO_PUBLIC_ENV=development expo start --web --port 19006",
     "build:ios:prod": "eas-cli build --platform ios --profile production",
     "build:ios:prod:submit": "eas-cli build --platform ios --profile production --auto-submit",
     "test": "jest",

@@ -1,8 +1,14 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { initializeAuth, getReactNativePersistence, connectAuthEmulator, getAuth } from 'firebase/auth';
+import { 
+  initializeAuth, 
+  getReactNativePersistence, 
+  connectAuthEmulator, 
+  getAuth
+} from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 // Determine environment
 const getEnvironment = () => {
@@ -72,18 +78,31 @@ try {
 // Get Firestore service
 export const db = getFirestore(app);
 
-// Initialize Auth service specifically for React Native
+// Initialize Auth service - different persistence for web vs native
 let auth;
 try {
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage)
-  });
+  // Web platform uses default getAuth (browserLocalPersistence is default)
+  // Native platforms use getReactNativePersistence with AsyncStorage
+  if (Platform.OS === 'web') {
+    // For web, use getAuth which uses browserLocalPersistence by default
+    auth = getAuth(app);
+  } else {
+    // For native platforms (iOS, Android), use React Native persistence with AsyncStorage
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage)
+    });
+  }
 } catch (error) {
   // If already initialized, get existing auth
   if (error.code === 'auth/already-initialized') {
     auth = getAuth(app);
   } else {
-    throw error;
+    // If error is not about already initialized, try to get existing auth
+    try {
+      auth = getAuth(app);
+    } catch {
+      throw error;
+    }
   }
 }
 
