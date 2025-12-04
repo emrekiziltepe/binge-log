@@ -163,45 +163,58 @@ export default function App() {
               borderTopColor: colors.border,
             },
             headerStyle: {
-              backgroundColor: colors.headerBackground,
+              backgroundColor: colors.headerBackground + 'CC', // Semi-transparent
+              borderBottomWidth: 0,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 8,
+              elevation: 3,
             },
             headerTintColor: colors.headerText,
             headerTitleStyle: {
               fontWeight: 'bold',
+              fontSize: 18,
               color: colors.headerText,
             },
             headerLeft: () => {
               const hasAnyGoal = goals.weekly && Object.values(goals.weekly).some(v => v !== null && v !== undefined && v !== '') ||
                                  goals.monthly && Object.values(goals.monthly).some(v => v !== null && v !== undefined && v !== '');
               return (
-                <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16 }}>
+                <View style={{ width: 48, alignItems: 'center', paddingLeft: 16 }}>
                   <TouchableOpacity
                     onPress={() => setGoalModalVisible(true)}
                     style={{ 
-                      padding: 8, 
-                      borderRadius: 8, 
-                      marginRight: 8,
-                      backgroundColor: hasAnyGoal ? colors.primary : 'transparent'
+                      width: 48,
+                      height: 48,
+                      borderRadius: 24,
+                      backgroundColor: 'transparent',
+                      justifyContent: 'center',
+                      alignItems: 'center',
                     }}
                   >
                     <Ionicons 
-                      name="flag" 
-                      size={24} 
-                      color={hasAnyGoal ? '#fff' : colors.headerText} 
+                      name="trophy" 
+                      size={30} 
+                      color={hasAnyGoal ? '#2bee6c' : colors.headerText} 
                     />
                   </TouchableOpacity>
                 </View>
               );
             },
-            headerRight: () => <HamburgerMenu 
-              navigation={navigation} 
-              user={user} 
-              onUserChange={(newUser) => {
-                setUser(newUser);
-              }}
-              onShowAuthModal={() => setAuthModalVisible(true)}
-              syncStatus={syncStatus}
-            />,
+            headerRight: () => (
+              <View style={{ width: 48, alignItems: 'center', paddingRight: 16 }}>
+                <HamburgerMenu 
+                  navigation={navigation} 
+                  user={user} 
+                  onUserChange={(newUser) => {
+                    setUser(newUser);
+                  }}
+                  onShowAuthModal={() => setAuthModalVisible(true)}
+                  syncStatus={syncStatus}
+                />
+              </View>
+            ),
           })}
         >
           <Tab.Screen 

@@ -14,7 +14,8 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
-    "sync": "Sync"
+    "sync": "Sync",
+    "today": "Today"
   },
   "navigation": {
     "daily": "Daily",
@@ -55,6 +56,7 @@
     "rating": "Rating",
     "isCompleted": "Completed",
     "quickAdd": "Quick Add",
+    "recent": "Recent Activities",
     "recentActivities": "Recent Activities",
     "noActivities": "No activities yet",
     "addFirstActivity": "Add your first activity!",

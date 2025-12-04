@@ -81,21 +81,27 @@ export default function ActivityFormModal({
                     testID="activity-title-input"
                   />
 
-                  {/* Kategori Seçimi - Hidden in quick add mode */}
+                  {/* Modern Kategori Seçimi - Hidden in quick add mode */}
                   {!isQuickAdd && (
-                    <>
-                      <Text style={[styles.inputLabel, { color: colors.text }]}>{t('activity.category')}</Text>
-                      <View style={styles.categoryGrid}>
+                    <View style={styles.modernCategorySection}>
+                      <Text style={[styles.modernCategorySectionTitle, { color: colors.text }]}>{t('activity.category')}</Text>
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.modernCategoryScroll}
+                      >
                         {Object.entries(CATEGORIES).map(([key, category]) => (
                           <TouchableOpacity
                             key={key}
                             style={[
-                              styles.categoryButton,
-                              {
-                                backgroundColor: formData.category === key ? colors.surfaceSecondary : colors.surfaceSecondary,
+                              styles.modernCategoryPill,
+                              { 
+                                backgroundColor: formData.category === key 
+                                  ? colors.primary 
+                                  : colors.surfaceSecondary,
+                                borderWidth: 1,
                                 borderColor: formData.category === key ? colors.primary : colors.border,
-                              },
-                              formData.category === key && { borderColor: colors.primary }
+                              }
                             ]}
                             onPress={() => {
                               Keyboard.dismiss();
@@ -103,14 +109,19 @@ export default function ActivityFormModal({
                             }}
                             testID={`category-button-${key}`}
                           >
-                            <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                            <Text style={[styles.categoryName, { color: formData.category === key ? colors.primary : colors.text }]}>
+                            <Text style={[
+                              styles.modernCategoryPillText,
+                              { 
+                                color: formData.category === key ? '#fff' : colors.text,
+                                fontWeight: formData.category === key ? '600' : '500'
+                              }
+                            ]}>
                               {category.name}
                             </Text>
                           </TouchableOpacity>
                         ))}
-                      </View>
-                    </>
+                      </ScrollView>
+                    </View>
                   )}
 
                   {/* Detay Girişi */}

@@ -169,15 +169,13 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
 
   return (
     <View>
-      {/* Hamburger Button */}
+      {/* Modern Menu Button */}
       <TouchableOpacity
-        style={styles.hamburgerButton}
+        style={styles.modernMenuButton}
         onPress={openMenu}
         testID="hamburger-button"
       >
-        <View style={styles.hamburgerLine} />
-        <View style={styles.hamburgerLine} />
-        <View style={styles.hamburgerLine} />
+        <Ionicons name="menu" size={32} color={colors.headerText} />
       </TouchableOpacity>
 
       {/* Side Menu */}
@@ -307,6 +305,14 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: '#fff',
     borderRadius: 1,
+  },
+  modernMenuButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   overlay: {
     flex: 1,

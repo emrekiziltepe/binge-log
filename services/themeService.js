@@ -21,8 +21,8 @@ export const lightColors = {
   primaryDark: '#0051D5',
   
   // Status colors
-  success: '#10b981',
-  successLight: '#f0fdf4',
+  success: '#047857',
+  successLight: '#a7f3d0',
   warning: '#f59e0b',
   error: '#ef4444',
   
@@ -71,7 +71,7 @@ export const darkColors = {
   
   // Status colors
   success: '#10b981',
-  successLight: '#064e3b',
+  successLight: '#065f46',
   warning: '#f59e0b',
   error: '#ef4444',
   

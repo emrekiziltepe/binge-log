@@ -14,7 +14,8 @@
     "loading": "Yükleniyor...",
     "error": "Hata",
     "success": "Başarılı",
-    "sync": "Senkronize Et"
+    "sync": "Senkronize Et",
+    "today": "Bugün"
   },
   "navigation": {
     "daily": "Günlük",
@@ -55,6 +56,7 @@
     "rating": "Değerlendirme",
     "isCompleted": "Tamamlandı",
     "quickAdd": "Hızlı Ekle",
+    "recent": "Son Aktiviteler",
     "recentActivities": "Son Aktiviteler",
     "noActivities": "Henüz aktivite yok",
     "addFirstActivity": "İlk aktiviteni ekle!",

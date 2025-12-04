@@ -10,6 +10,7 @@ import {
   LayoutAnimation,
   UIManager,
   Platform,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +45,8 @@ import ActivityFormModal from '../components/dailyFlow/ActivityFormModal';
 import QuickAddMenu from '../components/dailyFlow/QuickAddMenu';
 import StreakCard from '../components/dailyFlow/StreakCard';
 import DailyStatsCard from '../components/dailyFlow/DailyStatsCard';
+import TrashIcon from '../components/icons/TrashIcon';
+import { Ionicons } from '@expo/vector-icons';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -66,6 +69,7 @@ const DailyFlowScreen = () => {
   const { currentStreak, longestStreak, calculateStreak } = useStreakCalculation();
   
   const scrollViewRef = useRef(null);
+  const dateScrollRef = useRef(null);
   
   // Date navigation hook
   const dateNavigation = useDateNavigation(currentDate, setCurrentDate, t);
@@ -904,208 +908,342 @@ const DailyFlowScreen = () => {
 
 
 
+  // Generate week days for horizontal scroll
+  const weekDays = useMemo(() => {
+    const days = [];
+    const startOfWeek = new Date(currentDate);
+    const dayOfWeek = startOfWeek.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Monday start
+    startOfWeek.setDate(startOfWeek.getDate() + diff);
+    
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(day.getDate() + i);
+      days.push(day);
+    }
+    return days;
+  }, [currentDate]);
+
+  const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+  
+  const isToday = (date) => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  };
+
+  const isSelected = (date) => {
+    return date.getDate() === currentDate.getDate() &&
+           date.getMonth() === currentDate.getMonth() &&
+           date.getFullYear() === currentDate.getFullYear();
+  };
+
+  // Auto-scroll to selected date - center it on screen
+  useEffect(() => {
+    const selectedIndex = weekDays.findIndex(day => isSelected(day));
+    if (selectedIndex !== -1 && dateScrollRef.current) {
+      const screenWidth = Dimensions.get('window').width;
+      const cardWidth = 64; // Card width
+      const cardMargin = 10; // Margin right of each card
+      const totalCardWidth = cardWidth + cardMargin;
+      const paddingStart = 16; // ContentContainer paddingHorizontal (left)
+      
+      // Calculate the position of the card's left edge
+      const cardLeftPosition = paddingStart + (selectedIndex * totalCardWidth);
+      
+      // Calculate scroll position to center the card
+      // We want: cardCenter = screenWidth / 2
+      // cardCenter = scrollPosition + (screenWidth / 2)
+      // So: scrollPosition = cardLeftPosition + (cardWidth / 2) - (screenWidth / 2)
+      const scrollPosition = cardLeftPosition + (cardWidth / 2) - (screenWidth / 2);
+      
+      setTimeout(() => {
+        dateScrollRef.current?.scrollTo({
+          x: Math.max(0, scrollPosition),
+          animated: true
+        });
+      }, 100);
+    }
+  }, [currentDate, weekDays]);
+
   return (
     <View 
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      {/* Tarih Navigasyonu */}
-      <View style={[styles.dateHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigateDate(-1)} style={styles.navButton}>
-          <Text style={[styles.navButtonText, { color: colors.text }]}>‹</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={openDatePicker} style={styles.dateButton}>
-        <Text style={[styles.dateText, { color: colors.text }]}>{formatDate(currentDate)}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigateDate(1)} style={styles.navButton}>
-          <Text style={[styles.navButtonText, { color: colors.text }]}>›</Text>
-        </TouchableOpacity>
+      {/* Horizontal Date Picker - Below Navigation Header */}
+      <View style={[styles.dateScrollContainer, { backgroundColor: colors.surface + 'CC', borderBottomColor: colors.border }]}>
+        <ScrollView 
+          ref={dateScrollRef}
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.horizontalDateScroll}
+          contentContainerStyle={styles.horizontalDateContent}
+        >
+          {weekDays.map((day, index) => {
+            const isCurrentDay = isToday(day);
+            const isSelectedDay = isSelected(day);
+            
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.dateCard,
+                  isCurrentDay && styles.dateCardToday,
+                  isSelectedDay && styles.dateCardSelected,
+                  { 
+                    backgroundColor: isCurrentDay ? '#2bee6c' : 
+                                   isSelectedDay ? colors.primary : 
+                                   colors.card
+                  }
+                ]}
+                onPress={() => {
+                  if (isSelectedDay) {
+                    // If already selected, open date picker modal
+                    openDatePicker();
+                  } else {
+                    // Otherwise, switch to that date
+                    setCurrentDate(new Date(day));
+                  }
+                }}
+              >
+                <Text style={[
+                  styles.dateCardDay,
+                  { color: isCurrentDay ? '#000' : colors.text }
+                ]}>
+                  {isCurrentDay ? t('common.today') || 'Bugün' : dayNames[day.getDay()]}
+                </Text>
+                <Text style={[
+                  styles.dateCardDate,
+                  { color: isCurrentDay ? '#000' : colors.text }
+                ]}>
+                  {day.getDate()}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* Streak Kartı */}
-      <StreakCard 
-        currentStreak={currentStreak}
-        longestStreak={longestStreak}
-        colors={colors}
-      />
-
-      {/* Kompakt Günlük Özet */}
-      <DailyStatsCard
-        dailyStats={dailyStats}
-        CATEGORIES={CATEGORIES}
-        colors={colors}
-      />
-
-      {/* Aktivite Listesi */}
+      {/* Modern Activity List - with swipe to change date */}
       <View 
-        style={styles.activitiesContainer}
+        style={styles.modernActivityListWrapper}
         {...dateSwipeResponder.panHandlers}
       >
-      <ScrollView 
-        ref={scrollViewRef}
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContentContainer}
-        onScrollBeginDrag={handleScrollBeginDrag}
-        onScrollEndDrag={handleScrollEndDrag}
-        scrollEventThrottle={16}
-      >
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.modernActivityList}
+          contentContainerStyle={styles.modernActivityListContent}
+          onScrollBeginDrag={handleScrollBeginDrag}
+          onScrollEndDrag={handleScrollEndDrag}
+          scrollEventThrottle={16}
+        >
         {activities.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('activity.noActivitiesYet')}</Text>
             <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>{t('activity.addFirstActivity')}</Text>
           </View>
         ) : (
-          Object.entries(groupedActivities).map(([categoryKey, categoryActivities]) => {
-            const isGoalsSection = categoryKey === '_goals';
-            const category = isGoalsSection ? null : CATEGORIES[categoryKey];
+          <View style={styles.modernActivitiesWrapper}>{activities.map((activity) => {
+            const activityCategory = CATEGORIES[activity.type];
+            const isSwiped = swipedActivityId === activity.id;
+            const isDeleting = deletingActivityId === activity.id;
+            
+            // Initialize animation
+            if (!swipeAnimations[activity.id]) {
+              setSwipeAnimations(prev => ({
+                ...prev,
+                [activity.id]: new Animated.Value(0)
+              }));
+            }
+            
+            let slideAnimation = swipeAnimations[activity.id] || new Animated.Value(0);
             
             return (
-              <View key={categoryKey} style={styles.categoryGroup}>
-                {/* Kategori Başlığı */}
-                <TouchableOpacity 
-                  style={styles.categoryHeader}
-                  onPress={() => toggleCategory(categoryKey)}
-                >
-                  <View style={styles.categoryContent}>
-                    <View style={styles.categoryLeftGroup}>
-                      <Text style={styles.categoryTitle}>
-                        {isGoalsSection ? `🎯 ${t('activity.isGoal')}` : category.name}
-                      </Text>
-                      <Text style={styles.categoryCount}>{categoryActivities.length}</Text>
-                      <Text style={styles.categoryArrow}>
-                        {collapsedCategories[categoryKey] ? '+' : '−'}
-              </Text>
-            </View>
-                    <View style={styles.categoryHorizontalLine} />
-                  </View>
-                </TouchableOpacity>
+              <View key={activity.id} style={styles.modernActivityCardWrapper}>
+                {/* Delete button - shows when swiped */}
+                {!isDeleting && isSwiped && (
+                  <Animated.View 
+                    style={[
+                      styles.modernDeleteContainer,
+                      {
+                        transform: [
+                          {
+                            translateX: slideAnimation.interpolate({
+                              inputRange: [-70, 0],
+                              outputRange: [0, 70],
+                              extrapolate: 'clamp',
+                            })
+                          }
+                        ],
+                        opacity: slideAnimation.interpolate({
+                          inputRange: [-70, -35, 0],
+                          outputRange: [1, 0.5, 0],
+                          extrapolate: 'clamp',
+                        }),
+                      }
+                    ]}
+                  >
+                    <TouchableOpacity 
+                      style={styles.modernDeleteTouchable}
+                      onPress={() => handleSwipeDelete(activity)}
+                    >
+                      <TrashIcon size={28} color="#ef4444" />
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
                 
-                {/* Kategori Aktivite Listesi */}
-                {!collapsedCategories[categoryKey] && categoryActivities.map((activity) => {
-                  // For goals, get category from activity
-                  const activityCategory = isGoalsSection ? CATEGORIES[activity.type] : category;
-                  const isSwiped = swipedActivityId === activity.id;
-                  const isDeleting = deletingActivityId === activity.id;
-                  // Initialize animation for this activity
-                  if (!swipeAnimations[activity.id]) {
-                    setSwipeAnimations(prev => ({
-                      ...prev,
-                      [activity.id]: new Animated.Value(0)
-                    }));
-                  }
-                  // Get animation value - use existing or create new one
-                  let slideAnimation = swipeAnimations[activity.id];
-                  if (!slideAnimation) {
-                    slideAnimation = new Animated.Value(0);
-                    // Initialize in state for next render
-                    setSwipeAnimations(prev => ({
-                      ...prev,
-                      [activity.id]: slideAnimation
-                    }));
-                  }
+                {/* Modern Activity Card */}
+                <Animated.View
+                  style={[
+                    styles.modernActivityCard,
+                    { 
+                      backgroundColor: activity.isCompleted ? colors.successLight : colors.card,
+                      borderColor: activity.isCompleted ? colors.success : '#2bee6c80',
+                      transform: [{ translateX: slideAnimation }],
+                    },
+                    isDeleting && { opacity: 0 }
+                  ]}
+                >
+                  {/* Chevron indicator - moves with card */}
+                  {!isDeleting && (
+                    <View style={styles.modernChevronIndicatorFixed}>
+                      <TouchableOpacity 
+                        style={styles.modernChevronButton}
+                        onPress={() => {
+                          if (isSwiped) {
+                            Animated.spring(slideAnimation, {
+                              toValue: 0,
+                              useNativeDriver: true,
+                              tension: 100,
+                              friction: 8,
+                            }).start();
+                            setSwipedActivityId(null);
+                          } else {
+                            Animated.spring(slideAnimation, {
+                              toValue: -70,
+                              useNativeDriver: true,
+                              tension: 100,
+                              friction: 8,
+                            }).start();
+                            setSwipedActivityId(activity.id);
+                          }
+                        }}
+                        hitSlop={{ top: 10, bottom: 10, left: 15, right: 5 }}
+                      >
+                        <View style={styles.chevronContainer}>
+                          <View style={[styles.chevronLine, styles.chevronTop, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
+                          <View style={[styles.chevronLine, styles.chevronBottom, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   
-                  return (
-                    <ActivityCard
-                      key={activity.id}
-                      activity={activity}
-                      category={activityCategory}
-                      isSwiped={isSwiped}
-                      isDeleting={isDeleting}
-                      slideAnimation={slideAnimation}
-                      colors={colors}
-                      formatSeriesDetail={formatSeriesDetailMemo}
-                      getRatingColor={getRatingColor}
-                      onEdit={() => {
-                            if (isSwiped) {
-                              Animated.spring(slideAnimation, {
-                                toValue: 0,
-                                useNativeDriver: true,
-                                tension: 100,
-                                friction: 8,
-                              }).start();
-                              setSwipedActivityId(null);
-                            } else {
-                              editActivity(activity);
-                            }
-                          }}
-                      onSwipeDelete={() => handleSwipeDelete(activity)}
-                      onLongPress={handleGoalComplete}
-                      onToggleSwipe={() => {
-                        if (isSwiped) {
-                          // Close swipe
-                          Animated.spring(slideAnimation, {
-                            toValue: 0,
-                            useNativeDriver: true,
-                            tension: 100,
-                            friction: 8,
-                          }).start();
-                          setSwipedActivityId(null);
-                        } else {
-                          // Open swipe - narrower delete button (70px)
-                          Animated.spring(slideAnimation, {
-                            toValue: -70,
-                            useNativeDriver: true,
-                            tension: 100,
-                            friction: 8,
-                          }).start();
-                          setSwipedActivityId(activity.id);
-                        }
-                      }}
-                    />
-                  );
-                })}
+                  <Pressable 
+                    style={styles.modernActivityContent}
+                    onPress={() => editActivity(activity)}
+                    onLongPress={activity.isGoal ? () => handleGoalComplete(activity) : undefined}
+                  >
+                    <View style={styles.modernActivityIcon}>
+                      <Text style={styles.modernActivityEmoji}>{activityCategory.emoji}</Text>
+                    </View>
+                    
+                    <View style={styles.modernActivityInfo}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                          {activity.isCompleted && (
+                            <View style={[styles.completionIcon, { backgroundColor: colors.success, marginRight: 8 }]}>
+                              <Text style={styles.completionIconText}>✓</Text>
+                            </View>
+                          )}
+                          <Text style={[styles.modernActivityTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>
+                            {activity.title}
+                          </Text>
+                        </View>
+                        
+                        {activity.rating > 0 && (
+                          <View style={[styles.modernRatingBadgeSmall, { backgroundColor: getRatingColor(activity.rating) + '30', marginRight: 35 }]}>
+                            <Text style={styles.modernRatingIconSmall}>⭐</Text>
+                            <Text style={[styles.modernRatingTextSmall, { color: colors.text }]}>
+                              {activity.rating}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      {activity.detail && (
+                        <Text style={[styles.modernActivityDetail, { color: colors.textSecondary }]} numberOfLines={1}>
+                          {activity.type === 'series' 
+                            ? formatSeriesDetailMemo(activity.detail)
+                            : activity.type === 'book'
+                            ? `${activityCategory.detailLabel}: ${activity.detail}`
+                            : activity.type === 'sport'
+                            ? activity.detail
+                            : `${activityCategory.detailLabel}: ${activity.detail}`}
+                        </Text>
+                      )}
+                    </View>
+                  </Pressable>
+                </Animated.View>
               </View>
             );
-          })
+          })}</View>
         )}
-      </ScrollView>
+        </ScrollView>
       </View>
 
-      {/* Ekleme Butonları */}
-      <View style={styles.addButtonsContainer}>
-        {/* Hızlı Ekleme Butonu */}
-        {recentActivities.length > 0 && (
-          <TouchableOpacity 
-            style={[
-              styles.quickAddButton, 
-              { 
-                backgroundColor: colors.warning,
-                borderColor: colors.surface,
-                shadowColor: colors.warning
-              }
-            ]} 
-            onPress={() => setShowQuickAdd(!showQuickAdd)}
-          >
-            <Text style={styles.quickAddButtonText}>⚡</Text>
-          </TouchableOpacity>
+      {/* Floating Action Button Group */}
+      <View style={styles.fabContainer}>
+        {showQuickAdd && recentActivities.length > 0 && (
+          <Animated.View style={[
+            styles.quickActivitiesCard,
+            { backgroundColor: '#283944' }
+          ]}>
+            <Text style={styles.quickActivitiesTitle}>{t('activity.recent') || 'Son Aktiviteler'}</Text>
+            {recentActivities.slice(0, 3).map((recent, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.quickActivityItem}
+                onPress={() => openAddModalWithActivity(recent)}
+              >
+                <View style={styles.quickActivityIcon}>
+                  <Text style={styles.quickActivityEmoji}>{CATEGORIES[recent.type]?.emoji}</Text>
+                </View>
+                <View style={styles.quickActivityInfo}>
+                  <Text style={styles.quickActivityTitle} numberOfLines={1}>{recent.title}</Text>
+                  {recent.detail && (
+                    <Text style={styles.quickActivitySubtitle} numberOfLines={1}>
+                      {recent.type === 'series' ? formatSeriesDetailMemo(recent.detail) : recent.detail}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
         )}
         
-        {/* Ana Ekleme Butonu */}
-        <Pressable 
-          style={({ pressed }) => [
-            styles.addButton,
-            pressed && styles.addButtonPressed
-          ]} 
-          onPress={addActivity}
-        >
-        <Text style={styles.addButtonText}>+</Text>
-        </Pressable>
+        <View style={styles.fabButtons}>
+          {recentActivities.length > 0 && (
+            <TouchableOpacity 
+              style={[styles.fabButtonSmall, { backgroundColor: '#3c3c3c' }]}
+              onPress={() => setShowQuickAdd(!showQuickAdd)}
+            >
+              <Ionicons name="flash" size={28} color="#fff" />
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity 
+            style={[styles.fabButtonLarge, { backgroundColor: '#4831d4' }]}
+            onPress={addActivity}
+          >
+            <Ionicons name="add" size={36} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Hızlı Ekleme Menüsü */}
-      <QuickAddMenu
-        visible={showQuickAdd}
-        recentActivities={recentActivities}
-        CATEGORIES={CATEGORIES}
-        activities={activities}
-        colors={colors}
-        currentDate={currentDate}
-        onClose={() => setShowQuickAdd(false)}
-        onActivityAdded={handleQuickAddActivity}
-        onSaveRecentActivity={saveRecentActivity}
-        onOpenAddModal={openAddModalWithActivity}
-      />
+      {/* Modals - Keep functional */}
 
-      {/* Tarih Seçici Modal */}
+      
+      {/* Date and Activity Form Modals */}
       <DatePickerModal
         visible={showDatePicker}
         currentDate={currentDate}
