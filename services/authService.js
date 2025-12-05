@@ -14,7 +14,10 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
+import autoSyncService from './autoSyncService';
 
 // Completion callback for WebBrowser
 WebBrowser.maybeCompleteAuthSession();
@@ -36,6 +39,9 @@ const getErrorMessage = (errorCode) => {
     'auth/apple-not-supported': 'appleNotSupported',
     'auth/apple-not-available': 'appleNotAvailable',
     'auth/apple-auth-failed': 'appleAuthFailed',
+    'auth/google-client-id-missing': 'googleAuthFailed',
+    'auth/id-token-missing': 'googleAuthFailed',
+    'auth/googleAuthFailed': 'googleAuthFailed',
   };
   
   return errorMessages[errorCode] || 'unknownError';
@@ -91,10 +97,75 @@ export const loginUser = async (email, password) => {
   }
 };
 
+// Clear user-specific local data
+export const clearUserLocalData = async (userId) => {
+  try {
+    if (!userId) {
+      return;
+    }
+
+    // Get all AsyncStorage keys
+    const allKeys = await AsyncStorage.getAllKeys();
+    
+    // Keys to remove (user-specific):
+    // - activities_${userId}_*
+    // - goals_${userId}
+    // - recentActivities_${userId}
+    // - offline_queue (clear on logout)
+    
+    const keysToRemove = [];
+    
+    for (const key of allKeys) {
+      // User-specific activities
+      if (key.startsWith(`activities_${userId}_`)) {
+        keysToRemove.push(key);
+      }
+      // User-specific goals
+      else if (key === `goals_${userId}`) {
+        keysToRemove.push(key);
+      }
+      // User-specific recent activities
+      else if (key === `recentActivities_${userId}`) {
+        keysToRemove.push(key);
+      }
+      // Offline queue (clear on logout)
+      else if (key === 'offline_queue') {
+        keysToRemove.push(key);
+      }
+    }
+    
+    // Remove all user-specific keys
+    if (keysToRemove.length > 0) {
+      await AsyncStorage.multiRemove(keysToRemove);
+      console.log(`Cleared ${keysToRemove.length} user-specific data keys`);
+    }
+    
+    // Also clear offline queue from memory
+    try {
+      await autoSyncService.clearOfflineQueue();
+    } catch (error) {
+      console.error('Error clearing offline queue from memory:', error);
+    }
+  } catch (error) {
+    console.error('Error clearing user local data:', error);
+    // Don't throw - logout should continue even if clearing fails
+  }
+};
+
 // User logout
 export const logoutUser = async () => {
   try {
+    // Get user ID before signing out (auth.currentUser will be null after signOut)
+    const userId = getUserId();
+    
+    // Sign out from Firebase
     await signOut(auth);
+    
+    // Clear user-specific local data
+    if (userId) {
+      await clearUserLocalData(userId);
+    }
+    
     return { success: true };
   } catch (error) {
     console.error('Logout error:', error);
@@ -158,47 +229,17 @@ export const sendPasswordReset = async (email) => {
 // Login with Google
 export const loginWithGoogle = async () => {
   try {
-    // Start Google OAuth flow using Firebase Auth Domain
-    const redirectUri = AuthSession.makeRedirectUri({
-      useProxy: true,
-    });
-
-    // Firebase's Google OAuth endpoint
-    const authUrl = `https://${auth.app.options.authDomain}/__/auth/handler?authType=signInWithPopup&providerId=google.com&redirectUri=${encodeURIComponent(redirectUri)}&apikey=${auth.app.options.apiKey}`;
-
-    // Open in web browser
-    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-    if (result.type === 'success') {
-      // Get token from URL
-      const { url } = result;
-      const params = new URLSearchParams(url.split('#')[1] || url.split('?')[1]);
-      const accessToken = params.get('access_token');
-      const idToken = params.get('id_token');
-
-      if (idToken) {
-        // Create Google credential
-        const credential = GoogleAuthProvider.credential(idToken);
-        
-        // Login with Firebase
-        const userCredential = await signInWithCredential(auth, credential);
-        
-        return { success: true, user: userCredential.user };
-      } else {
-        // Alternative: Direct OAuth flow
-        return await loginWithGoogleDirect();
-      }
-    } else {
-      return { success: false, error: 'cancelled', errorCode: 'auth/cancelled' };
-    }
+    // For production, use direct OAuth flow with client IDs
+    // This is more reliable than Firebase Auth Domain endpoint
+    return await loginWithGoogleDirect();
   } catch (error) {
     console.error('Google login error:', error);
-    // Try alternative method
-    return await loginWithGoogleDirect();
+    const errorKey = getErrorMessage(error.code);
+    return { success: false, error: errorKey || 'googleAuthFailed', errorCode: error.code };
   }
 };
 
-// Login with Google (Alternative - Direct OAuth)
+// Login with Google (Direct OAuth - Production ready)
 const loginWithGoogleDirect = async () => {
   try {
     // Discovery endpoint for Google OAuth
@@ -209,14 +250,39 @@ const loginWithGoogleDirect = async () => {
     };
 
     // Create redirect URI
+    // For development, use custom scheme (more reliable)
+    // For production, useProxy can be true or false depending on setup
     const redirectUri = AuthSession.makeRedirectUri({
-      useProxy: true,
+      useProxy: __DEV__ ? false : true, // Development'ta custom scheme kullan
     });
 
-    // Google OAuth Client ID is required for Firebase Project
-    // Using Firebase API Key for now (may not work)
-    // User needs to enable Google provider in Firebase Console and get OAuth Client ID
-    const clientId = auth.app.options.apiKey; // Google OAuth Client ID should be used instead
+    // Google OAuth Client ID - platform specific
+    // Get from environment variables via app.config.js
+    const clientId = Platform.select({
+      ios: Constants.expoConfig?.extra?.googleIosClientId,
+      android: Constants.expoConfig?.extra?.googleAndroidClientId,
+      web: Constants.expoConfig?.extra?.googleWebClientId,
+      default: Constants.expoConfig?.extra?.googleWebClientId, // Fallback
+    });
+    
+    // Debug logging (only in development)
+    if (__DEV__) {
+      console.log('Google OAuth - Platform:', Platform.OS);
+      console.log('Google OAuth - Redirect URI:', redirectUri);
+      console.log('Google OAuth - Client ID configured:', !!clientId);
+    }
+    
+    // Client ID is required for production
+    if (!clientId) {
+      console.error('Google OAuth Client ID is not configured for this platform.');
+      console.error('Platform:', Platform.OS);
+      console.error('Available config keys:', Object.keys(Constants.expoConfig?.extra || {}));
+      return { 
+        success: false, 
+        error: 'googleAuthFailed', 
+        errorCode: 'auth/google-client-id-missing' 
+      };
+    }
 
     // Create request
     const request = new AuthSession.AuthRequest({
@@ -240,14 +306,32 @@ const loginWithGoogleDirect = async () => {
         const userCredential = await signInWithCredential(auth, credential);
         
         return { success: true, user: userCredential.user };
+      } else {
+        console.error('Google OAuth: No id_token in response');
+        return { 
+          success: false, 
+          error: 'googleAuthFailed', 
+          errorCode: 'auth/id-token-missing' 
+        };
       }
+    } else if (result.type === 'cancel') {
+      return { success: false, error: 'cancelled', errorCode: 'auth/cancelled' };
+    } else {
+      console.error('Google OAuth: Unexpected result type:', result.type);
+      return { 
+        success: false, 
+        error: 'googleAuthFailed', 
+        errorCode: `auth/oauth-${result.type}` 
+      };
     }
-    
-    return { success: false, error: 'cancelled', errorCode: 'auth/cancelled' };
   } catch (error) {
     console.error('Google direct login error:', error);
     const errorKey = getErrorMessage(error.code);
-    return { success: false, error: errorKey || 'googleAuthFailed', errorCode: error.code };
+    return { 
+      success: false, 
+      error: errorKey || 'googleAuthFailed', 
+      errorCode: error.code || 'auth/unknown-error' 
+    };
   }
 };
 

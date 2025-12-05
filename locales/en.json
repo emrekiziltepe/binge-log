@@ -267,6 +267,7 @@
     "userNotLoggedIn": "User is not logged in",
     "loginWithGoogle": "Sign in with Google",
     "loginWithApple": "Sign in with Apple",
+    "googleAuthFailed": "Google sign-in failed. Please try again.",
     "or": "or",
     "continueWith": "Continue with",
     "cancelled": "Sign in cancelled",

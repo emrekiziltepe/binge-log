@@ -266,6 +266,7 @@
     "userNotLoggedIn": "Kullanıcı giriş yapmamış",
     "loginWithGoogle": "Google ile Giriş Yap",
     "loginWithApple": "Apple ile Giriş Yap",
+    "googleAuthFailed": "Google ile giriş başarısız oldu. Lütfen tekrar deneyin.",
     "or": "veya",
     "continueWith": "İle Devam Et",
     "cancelled": "Giriş iptal edildi",

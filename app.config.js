@@ -51,6 +51,7 @@ const getConfig = () => {
         resizeMode: "contain",
         backgroundColor: "#ffffff"
       },
+      scheme: "bingelog",
       ios: {
         supportsTablet: true,
         bundleIdentifier: "com.emek02.bingelog",
@@ -60,6 +61,7 @@ const getConfig = () => {
         }
       },
       android: {
+        package: "com.emek02.bingelog",
         adaptiveIcon: {
           foregroundImage: "./assets/adaptive-icon.png",
           backgroundColor: "#ffffff"
@@ -84,7 +86,11 @@ const getConfig = () => {
         firebaseStorageBucket: currentConfig.storageBucket,
         firebaseMessagingSenderId: currentConfig.messagingSenderId,
         firebaseAppId: currentConfig.appId,
-        firebaseMeasurementId: currentConfig.measurementId
+        firebaseMeasurementId: currentConfig.measurementId,
+        // Google OAuth Client IDs - optional, for production
+        googleIosClientId: process.env.GOOGLE_IOS_CLIENT_ID,
+        googleAndroidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID,
+        googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID,
       }
     }
   };

@@ -7,6 +7,9 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ENV": "development"
+      },
       "ios": {
         "simulator": false
       }
@@ -18,9 +21,13 @@
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_ENV": "production"
+      },
       "ios": {
         "simulator": false
-      }
+      },
+      "android": {}
     }
   },
   "submit": {
