@@ -1,11 +1,11 @@
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { 
-  getAllActivitiesFromFirebase, 
+import {
+  getAllActivitiesFromFirebase,
   syncLocalDataToFirebase,
-  syncFirebaseToLocal 
+  syncFirebaseToLocal
 } from './firebaseService';
-import { getCurrentUser } from './authService';
+import { auth } from '../firebase';
 import goalService from './goalService';
 
 class AutoSyncService {
@@ -21,12 +21,12 @@ class AutoSyncService {
     NetInfo.addEventListener(state => {
       const wasOffline = !this.isOnline;
       this.isOnline = state.isConnected;
-      
+
       // Automatically sync when internet comes back
       if (wasOffline && this.isOnline) {
         this.performAutoSync();
       }
-      
+
       // Notify listeners
       this.notifyListeners();
     });
@@ -55,7 +55,7 @@ class AutoSyncService {
 
   // Automatic synchronization
   async performAutoSync() {
-    const user = getCurrentUser();
+    const user = auth.currentUser;
     if (!user || this.syncInProgress) {
       return;
     }
@@ -66,13 +66,13 @@ class AutoSyncService {
     try {
       // 1. Send local data to Firebase
       await this.syncLocalToFirebase();
-      
+
       // 2. Get new data from Firebase
       await this.syncFirebaseToLocal();
-      
+
       // 3. Process offline queue
       await this.processOfflineQueue();
-      
+
     } catch (error) {
       console.error('Auto sync failed:', error);
     } finally {
@@ -86,10 +86,10 @@ class AutoSyncService {
     try {
       // Sync activities
       await syncLocalDataToFirebase();
-      
+
       // Sync goals - when getGoals() is called, if logged-in user exists
       // Will automatically get goals from AsyncStorage and save to Firebase
-      const user = getCurrentUser();
+      const user = auth.currentUser;
       if (user) {
         await goalService.getGoals();
       }
@@ -135,7 +135,7 @@ class AutoSyncService {
   // Execute offline operation
   async executeOperation(operation) {
     const { type, data } = operation;
-    
+
     switch (type) {
       case 'ADD_ACTIVITY':
         // Add activity to Firebase
@@ -158,9 +158,9 @@ class AutoSyncService {
         ...operation,
         timestamp: Date.now()
       };
-      
+
       this.offlineQueue.push(queueItem);
-      
+
       // Save queue to AsyncStorage
       this.saveOfflineQueue();
     }
@@ -198,7 +198,7 @@ class AutoSyncService {
     if (!this.isOnline) {
       throw new Error('No internet connection');
     }
-    
+
     await this.performAutoSync();
   }
 

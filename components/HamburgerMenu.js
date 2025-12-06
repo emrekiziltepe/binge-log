@@ -1,10 +1,11 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated, Alert } from 'react-native';
+
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { changeLanguage } from '../i18n';
-import { logoutUser, loginUser, registerUser } from '../services/authService';
+import { logoutUser, loginUser, registerUser, deleteAccount } from '../services/authService';
 import AuthScreen from '../screens/AuthScreen';
 import { ThemeContext } from '../contexts/ThemeContext';
 
@@ -99,7 +100,46 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
         }
       ]
     );
+  }
+
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      t('auth.deleteAccount'),
+      t('auth.deleteAccountConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              closeMenu(); // Close menu first
+              const result = await deleteAccount();
+              if (result && result.success) {
+                // Auth state listener will automatically update to null
+                if (onUserChange) {
+                  onUserChange(null);
+                }
+                Alert.alert(t('common.success'), t('auth.deleteAccountSuccess'));
+              } else {
+                if (result?.error === 'requiresRecentLogin') {
+                  Alert.alert(t('auth.error'), t('auth.requiresRecentLogin'));
+                } else {
+                  Alert.alert(t('auth.error'), result?.error || t('auth.unknownError'));
+                }
+              }
+            } catch (error) {
+              console.error('Delete account error:', error);
+              Alert.alert(t('auth.error'), error?.message || t('auth.unknownError'));
+            }
+          }
+        }
+      ]
+    );
   };
+
+
 
   const handleAuthSuccess = (user) => {
     setAuthModalVisible(false);
@@ -156,6 +196,15 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
         onPress: handleLogin,
       }
     ]),
+    // Delete Account button (only for logged-in users)
+    ...(user ? [{
+      icon: 'trash-outline',
+      title: t('auth.deleteAccount'),
+      subtitle: t('auth.deleteAccountSubtitle'),
+      onPress: handleDeleteAccount,
+      titleStyle: { color: '#ff3b30' },
+      iconColor: '#ff3b30'
+    }] : []),
     {
       icon: 'information-circle-outline',
       title: t('hamburgerMenu.about'),
@@ -207,7 +256,7 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
               {menuItems.map((item, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={[styles.menuItem, { borderBottomColor: colors.borderLight }, item.disabled && styles.menuItemDisabled]}
+                  style={[styles.menuItem, { borderBottomColor: colors.borderLight }, item.disabled && styles.menuItemDisabled, item.style]}
                   onPress={item.disabled ? undefined : item.onPress}
                   disabled={item.disabled}
                 >
@@ -215,10 +264,14 @@ const HamburgerMenu = ({ navigation, user, onUserChange, onShowAuthModal, syncSt
                     <Ionicons
                       name={item.icon}
                       size={24}
-                      color={item.disabled ? colors.textTertiary : colors.primary}
+                      color={item.iconColor || (item.disabled ? colors.textTertiary : colors.primary)}
                     />
                     <View style={styles.menuItemText}>
-                      <Text style={[styles.menuItemTitle, { color: item.disabled ? colors.textTertiary : colors.text }, item.disabled && styles.menuItemTextDisabled]}>
+                      <Text style={[
+                        styles.menuItemTitle,
+                        { color: item.titleStyle?.color || (item.disabled ? colors.textTertiary : colors.text) },
+                        item.disabled && styles.menuItemTextDisabled
+                      ]}>
                         {item.title}
                       </Text>
                       <Text style={[styles.menuItemSubtitle, { color: item.disabled ? colors.textTertiary : colors.textSecondary }]}>

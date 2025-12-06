@@ -278,7 +278,12 @@
     "passwordResetSent": "Password Reset",
     "passwordResetEmailSent": "A password reset link has been sent to {{email}}. Please check your email and follow the instructions to reset your password.",
     "enterEmailForReset": "Please enter your email address to reset your password",
-    "emailRequired": "Email is required"
+    "emailRequired": "Email is required",
+    "deleteAccount": "Delete Account",
+    "deleteAccountSubtitle": "Permanently delete your account and all data",
+    "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone and all your data will be deleted.",
+    "deleteAccountSuccess": "Your account has been successfully deleted.",
+    "deleteAccountReLogin": "For security reasons, you may need to log in again before deleting your account."
   },
   "errors": {
     "error": "Error",

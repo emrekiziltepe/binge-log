@@ -7,7 +7,9 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithCredential,
-  OAuthProvider
+  GoogleAuthProvider,
+  OAuthProvider,
+  deleteUser
 } from 'firebase/auth';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Platform } from 'react-native';
@@ -15,6 +17,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
 import autoSyncService from './autoSyncService';
+import { deleteUserData } from './firebaseService';
 
 // Completion callback for WebBrowser
 
@@ -61,6 +64,9 @@ export const registerUser = async (email, password, displayName) => {
     return { success: true, emailVerificationSent: true };
   } catch (error) {
     console.error('Registration error:', error);
+    // If we get invalid-credential immediately after creation, it might be a race condition or auto-signin issue
+    // But usually createUser signs in automatically.
+    // If error is invalid-credential, map it to something more specific if possible, or generic error
     const errorKey = getErrorMessage(error.code);
     return { success: false, error: errorKey, errorCode: error.code };
   }
@@ -114,12 +120,29 @@ export const clearUserLocalData = async (userId) => {
       if (key.startsWith(`activities_${userId}_`)) {
         keysToRemove.push(key);
       }
+      // Guest activities (activities_YYYY-MM-DD)
+      // When deleting account, we should clear these too as they might have been merged or user expects clean slate
+      else if (key.startsWith('activities_') && !key.includes('_', 11)) {
+        // Check if it matches date format YYYY-MM-DD
+        const potentialDate = key.substring(11);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(potentialDate)) {
+          keysToRemove.push(key);
+        }
+      }
       // User-specific goals
       else if (key === `goals_${userId}`) {
         keysToRemove.push(key);
       }
+      // Guest goals
+      else if (key === 'goals') {
+        keysToRemove.push(key);
+      }
       // User-specific recent activities
       else if (key === `recentActivities_${userId}`) {
+        keysToRemove.push(key);
+      }
+      // Guest recent activities
+      else if (key === 'recentActivities') {
         keysToRemove.push(key);
       }
       // Offline queue (clear on logout)
@@ -164,6 +187,42 @@ export const logoutUser = async () => {
   } catch (error) {
     console.error('Logout error:', error);
     return { success: false, error: error.message };
+  }
+};
+
+// Delete user account
+export const deleteAccount = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      return { success: false, error: 'userNotLoggedIn' };
+    }
+
+    const userId = user.uid;
+
+    // 1. Delete user data from Firestore
+    // This ensures all activities and goals are removed before the user is deleted
+    try {
+      await deleteUserData();
+    } catch (error) {
+      console.error('Error deleting user Firestore data:', error);
+      // Continue even if data deletion fails, to ensure account is deleted
+    }
+
+    // 2. Clear local data
+    await clearUserLocalData(userId);
+
+    // 2. Delete user from Firebase Auth
+    await deleteUser(user);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Delete account error:', error);
+    // Re-authentication might be required if the session is old
+    if (error.code === 'auth/requires-recent-login') {
+      return { success: false, error: 'requiresRecentLogin', errorCode: error.code };
+    }
+    return { success: false, error: error.message, errorCode: error.code };
   }
 };
 

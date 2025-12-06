@@ -1,17 +1,17 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
   setDoc,
-  deleteDoc, 
-  getDocs, 
+  deleteDoc,
+  getDocs,
   getDoc,
-  query, 
-  where, 
+  query,
+  where,
   orderBy,
   onSnapshot,
-  serverTimestamp 
+  serverTimestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { formatLocalDate } from '../utils/dateUtils';
@@ -38,15 +38,29 @@ export const addActivityToFirebase = async (activity) => {
     }
 
     const activitiesRef = getActivitiesCollection();
-    const docRef = await addDoc(activitiesRef, {
-      ...activity,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return docRef.id;
+
+    // If activity has an ID, use it as the document ID to ensure idempotency
+    if (activity.id) {
+      const docRef = doc(activitiesRef, activity.id);
+      await setDoc(docRef, {
+        ...activity,
+        createdAt: activity.createdAt || serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      return activity.id;
+    } else {
+      // Fallback to auto-generated ID
+      const docRef = await addDoc(activitiesRef, {
+        ...activity,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      return docRef.id;
+    }
   } catch (error) {
     console.error('Firebase add activity error:', error);
-    throw error;
+    // Don't throw, just return null so sync continues
+    return null;
   }
 };
 
@@ -60,10 +74,10 @@ export const updateActivityInFirebase = async (activityId, activityData) => {
 
     const activitiesRef = getActivitiesCollection();
     const activityDoc = doc(activitiesRef, activityId);
-    
+
     // Check if document exists
     const docSnapshot = await getDoc(activityDoc);
-    
+
     if (docSnapshot.exists()) {
       // If document exists, update it
       await updateDoc(activityDoc, {
@@ -77,7 +91,7 @@ export const updateActivityInFirebase = async (activityId, activityData) => {
         activitiesRef,
         where('id', '==', activityData.id || activityId)
       ));
-      
+
       if (!querySnapshot.empty) {
         // Found existing document with matching id field, update it
         const existingDoc = querySnapshot.docs[0];
@@ -109,10 +123,10 @@ export const deleteActivityFromFirebase = async (activityId) => {
 
     const activitiesRef = getActivitiesCollection();
     const activityDoc = doc(activitiesRef, activityId);
-    
+
     // Check if document exists
     const docSnapshot = await getDoc(activityDoc);
-    
+
     if (docSnapshot.exists()) {
       // If document exists, delete it
       await deleteDoc(activityDoc);
@@ -122,7 +136,7 @@ export const deleteActivityFromFirebase = async (activityId) => {
         activitiesRef,
         where('id', '==', activityId)
       ));
-      
+
       if (!querySnapshot.empty) {
         // Found existing document with matching id field, delete it
         const existingDoc = querySnapshot.docs[0];
@@ -133,7 +147,7 @@ export const deleteActivityFromFirebase = async (activityId) => {
           activitiesRef,
           where('firebaseId', '==', activityId)
         ));
-        
+
         if (!querySnapshot2.empty) {
           const existingDoc = querySnapshot2.docs[0];
           await deleteDoc(existingDoc.ref);
@@ -153,11 +167,11 @@ export const getActivitiesFromFirebase = async (date) => {
   try {
     const activitiesRef = getActivitiesCollection();
     const dateStr = formatLocalDate(date);
-    
+
     // Get all activities, filter on client-side (doesn't require index)
     const querySnapshot = await getDocs(activitiesRef);
     const activities = [];
-    
+
     querySnapshot.forEach((doc) => {
       const data = doc.data();
       if (data.date === dateStr) {
@@ -167,7 +181,7 @@ export const getActivitiesFromFirebase = async (date) => {
         });
       }
     });
-    
+
     // Sort on client-side
     return activities.sort((a, b) => {
       const aTime = new Date(a.createdAt || a.timestamp).getTime();
@@ -185,17 +199,17 @@ export const getAllActivitiesFromFirebase = async () => {
   try {
     const activitiesRef = getActivitiesCollection();
     const q = query(activitiesRef, orderBy('createdAt', 'desc'));
-    
+
     const querySnapshot = await getDocs(q);
     const activities = [];
-    
+
     querySnapshot.forEach((doc) => {
       activities.push({
         id: doc.id,
         ...doc.data()
       });
     });
-    
+
     return activities;
   } catch (error) {
     console.error('Firebase fetch all activities error:', error);
@@ -208,13 +222,13 @@ export const subscribeToActivities = (date, callback) => {
   try {
     const activitiesRef = getActivitiesCollection();
     const dateStr = formatLocalDate(date);
-    
+
     const q = query(
       activitiesRef,
       where('date', '==', dateStr),
       orderBy('createdAt', 'desc')
     );
-    
+
     return onSnapshot(q, (querySnapshot) => {
       const activities = [];
       querySnapshot.forEach((doc) => {
@@ -241,7 +255,7 @@ export const syncLocalDataToFirebase = async () => {
 
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     const allKeys = await AsyncStorage.getAllKeys();
-    
+
     // Get existing activities from Firebase (for duplicate check)
     let existingActivities = [];
     try {
@@ -249,7 +263,7 @@ export const syncLocalDataToFirebase = async () => {
     } catch (error) {
       console.error('Firebase fetch existing activities error:', error);
     }
-    
+
     // Convert existing activity IDs to set (for quick check)
     const existingIds = new Set();
     existingActivities.forEach(activity => {
@@ -259,7 +273,7 @@ export const syncLocalDataToFirebase = async () => {
         existingIds.add(`${activity.timestamp}_${activity.title}`);
       }
     });
-    
+
     // Check both non-logged-in user format and logged-in user format
     const activityKeys = allKeys.filter(key => {
       // Non-logged-in user format: activities_YYYY-MM-DD
@@ -277,16 +291,16 @@ export const syncLocalDataToFirebase = async () => {
       }
       return false;
     });
-    
+
     let syncedCount = 0;
     let skippedCount = 0;
-    
+
     for (const key of activityKeys) {
       const storedActivities = await AsyncStorage.getItem(key);
       if (storedActivities) {
         const activities = JSON.parse(storedActivities);
         if (!Array.isArray(activities)) continue;
-        
+
         // Add each activity to Firebase (with duplicate check)
         for (const activity of activities) {
           try {
@@ -296,14 +310,14 @@ export const syncLocalDataToFirebase = async () => {
               skippedCount++;
               continue; // Already in Firebase, skip
             }
-            
+
             // Add to Firebase
             const firebaseId = await addActivityToFirebase({
               ...activity,
               date: activity.date || key.replace(/^activities(_\w+)?_/, ''),
               synced: true
             });
-            
+
             if (firebaseId) {
               syncedCount++;
               // Add ID to existingIds (to prevent duplicates within same batch)
@@ -318,9 +332,9 @@ export const syncLocalDataToFirebase = async () => {
         }
       }
     }
-    
+
     console.log(`Firebase sync completed: ${syncedCount} activities added, ${skippedCount} activities skipped (duplicate)`);
-    
+
   } catch (error) {
     console.error('Data sync error:', error);
     throw error;
@@ -332,7 +346,7 @@ export const syncFirebaseToLocal = async () => {
   try {
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     const allActivities = await getAllActivitiesFromFirebase();
-    
+
     // Group by date
     const activitiesByDate = {};
     allActivities.forEach(activity => {
@@ -342,14 +356,63 @@ export const syncFirebaseToLocal = async () => {
       }
       activitiesByDate[date].push(activity);
     });
-    
+
     // Save to AsyncStorage for each date
     for (const [date, activities] of Object.entries(activitiesByDate)) {
       await AsyncStorage.setItem(`activities_${date}`, JSON.stringify(activities));
     }
-    
+
   } catch (error) {
     console.error('Firebase download data error:', error);
+    throw error;
+  }
+};
+
+// Delete all user data from Firestore
+export const deleteUserData = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      return;
+    }
+
+    const userId = user.uid;
+    console.log(`Starting deletion of data for user: ${userId}`);
+
+    // 1. Delete Activities
+    const activitiesRef = collection(db, 'users', userId, 'activities');
+    const activitiesSnapshot = await getDocs(activitiesRef);
+
+    const deletePromises = [];
+    activitiesSnapshot.forEach((doc) => {
+      deletePromises.push(deleteDoc(doc.ref));
+    });
+
+    await Promise.all(deletePromises);
+    console.log(`Deleted ${deletePromises.length} activities`);
+
+    // 2. Delete Goals (if any)
+    // Assuming goals are stored in a subcollection or separate collection
+    // Based on goalService (not visible here but assuming structure)
+    // If goals are in 'users/{userId}/goals'
+    const goalsRef = collection(db, 'users', userId, 'goals');
+    const goalsSnapshot = await getDocs(goalsRef);
+
+    const goalDeletePromises = [];
+    goalsSnapshot.forEach((doc) => {
+      goalDeletePromises.push(deleteDoc(doc.ref));
+    });
+
+    await Promise.all(goalDeletePromises);
+    console.log(`Deleted ${goalDeletePromises.length} goals`);
+
+    // 3. Delete User Document itself (if exists)
+    const userDocRef = doc(db, 'users', userId);
+    await deleteDoc(userDocRef);
+    console.log('Deleted user document');
+
+  } catch (error) {
+    console.error('Error deleting user data:', error);
     throw error;
   }
 };

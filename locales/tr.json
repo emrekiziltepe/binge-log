@@ -277,7 +277,12 @@
     "passwordResetSent": "Şifre Sıfırlama",
     "passwordResetEmailSent": "{{email}} adresine şifre sıfırlama linki gönderildi. Lütfen e-postanızı kontrol edin ve şifrenizi sıfırlamak için talimatları takip edin.",
     "enterEmailForReset": "Şifrenizi sıfırlamak için lütfen e-posta adresinizi girin",
-    "emailRequired": "E-posta gerekli"
+    "emailRequired": "E-posta gerekli",
+    "deleteAccount": "Hesabımı Sil",
+    "deleteAccountSubtitle": "Hesabınızı ve tüm verilerinizi kalıcı olarak silin",
+    "deleteAccountConfirm": "Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm verileriniz silinecektir.",
+    "deleteAccountSuccess": "Hesabınız başarıyla silindi.",
+    "deleteAccountReLogin": "Güvenlik nedeniyle hesabınızı silmeden önce tekrar giriş yapmanız gerekebilir."
   },
   "errors": {
     "error": "Hata",

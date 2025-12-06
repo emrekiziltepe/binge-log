@@ -44,11 +44,11 @@ export default function App() {
     syncInProgress: false,
     offlineQueueLength: 0
   });
-  
+
   // Theme state
   const [theme, setThemeState] = useState('light');
   const [colors, setColors] = useState(lightColors);
-  
+
   // Goals state
   const { goals, loadGoals } = useGoals();
   const [goalModalVisible, setGoalModalVisible] = useState(false);
@@ -69,7 +69,7 @@ export default function App() {
       unsubscribeTheme();
     };
   }, []);
-  
+
   useEffect(() => {
     const unsubscribe = onAuthStateChange((user) => {
       setUser(user);
@@ -83,7 +83,7 @@ export default function App() {
   useEffect(() => {
     // Start auto sync service
     autoSyncService.startListening();
-    
+
     // Listen to sync status changes
     const unsubscribeSync = autoSyncService.addListener((status) => {
       setSyncStatus(status);
@@ -129,7 +129,7 @@ export default function App() {
   };
 
   // Login is no longer required - user can use the app without logging in
-  
+
   // Early return - must be AFTER all hooks
   if (loading) {
     return (
@@ -144,6 +144,7 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
         <Tab.Navigator
+          key={user ? user.uid : 'guest'}
           screenOptions={({ route, navigation }) => ({
             tabBarIcon: ({ focused, color, size }) => {
               let iconName;
@@ -179,12 +180,12 @@ export default function App() {
             },
             headerLeft: () => {
               const hasAnyGoal = goals.weekly && Object.values(goals.weekly).some(v => v !== null && v !== undefined && v !== '') ||
-                                 goals.monthly && Object.values(goals.monthly).some(v => v !== null && v !== undefined && v !== '');
+                goals.monthly && Object.values(goals.monthly).some(v => v !== null && v !== undefined && v !== '');
               return (
                 <View style={{ width: 48, alignItems: 'center', paddingLeft: 16 }}>
                   <TouchableOpacity
                     onPress={() => setGoalModalVisible(true)}
-                    style={{ 
+                    style={{
                       width: 48,
                       height: 48,
                       borderRadius: 24,
@@ -193,10 +194,10 @@ export default function App() {
                       alignItems: 'center',
                     }}
                   >
-                    <Ionicons 
-                      name="trophy" 
-                      size={30} 
-                      color={hasAnyGoal ? '#2bee6c' : colors.headerText} 
+                    <Ionicons
+                      name="trophy"
+                      size={30}
+                      color={hasAnyGoal ? '#2bee6c' : colors.headerText}
                     />
                   </TouchableOpacity>
                 </View>
@@ -204,9 +205,9 @@ export default function App() {
             },
             headerRight: () => (
               <View style={{ width: 48, alignItems: 'center', paddingRight: 16 }}>
-                <HamburgerMenu 
-                  navigation={navigation} 
-                  user={user} 
+                <HamburgerMenu
+                  navigation={navigation}
+                  user={user}
                   onUserChange={(newUser) => {
                     setUser(newUser);
                   }}
@@ -217,18 +218,18 @@ export default function App() {
             ),
           })}
         >
-          <Tab.Screen 
-            name="Daily" 
+          <Tab.Screen
+            name="Daily"
             component={DailyFlowScreen}
             options={{ title: t('navigation.dailyLog') }}
           />
-          <Tab.Screen 
-            name="Stats" 
+          <Tab.Screen
+            name="Stats"
             component={ReportsScreen}
             options={{ title: t('navigation.statistics') }}
           />
         </Tab.Navigator>
-        
+
         {/* Auth Modal */}
         {authModalVisible && (
           <View style={{
