@@ -50,6 +50,38 @@ export const dailyFlowStyles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
+  // Modern Streak Card - Compact Single Line
+  modernStreakContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 0,
+  },
+  modernStreakCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+    gap: 8,
+  },
+  modernStreakEmoji: {
+    fontSize: 18,
+  },
+  modernStreakText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  modernStreakValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   // Modern Activity List
   modernActivityListWrapper: {
     flex: 1,

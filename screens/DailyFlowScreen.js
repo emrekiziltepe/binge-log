@@ -1025,6 +1025,21 @@ const DailyFlowScreen = () => {
         </ScrollView>
       </View>
 
+      {/* Streak Card - Compact Single Line */}
+      {currentStreak > 0 && (
+        <View style={[styles.modernStreakContainer, { backgroundColor: colors.surface + 'CC' }]}>
+          <View style={[styles.modernStreakCard, { backgroundColor: colors.card, borderColor: colors.primary }]}>
+            <Text style={styles.modernStreakEmoji}>🔥</Text>
+            <Text style={[styles.modernStreakText, { color: colors.text }]}>
+              {t('activity.currentStreak')}: <Text style={styles.modernStreakValue}>{currentStreak}</Text> {currentStreak === 1 ? t('activity.day') : t('activity.days')}
+              {longestStreak > currentStreak && (
+                <> • {t('activity.bestStreak')}: <Text style={styles.modernStreakValue}>{longestStreak}</Text></>
+              )}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Modern Activity List - with swipe to change date */}
       <View 
         style={styles.modernActivityListWrapper}
@@ -1048,6 +1063,14 @@ const DailyFlowScreen = () => {
             const activityCategory = CATEGORIES[activity.type];
             const isSwiped = swipedActivityId === activity.id;
             const isDeleting = deletingActivityId === activity.id;
+            
+            // Check if activity is a goal (future-dated)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
+            activityDate.setHours(0, 0, 0, 0);
+            const isFutureDate = activityDate > today;
+            const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
             
             // Initialize animation
             if (!swipeAnimations[activity.id]) {
@@ -1142,15 +1165,20 @@ const DailyFlowScreen = () => {
                   <Pressable 
                     style={styles.modernActivityContent}
                     onPress={() => editActivity(activity)}
-                    onLongPress={activity.isGoal ? () => handleGoalComplete(activity) : undefined}
+                    onLongPress={isGoal ? () => handleGoalComplete(activity) : undefined}
                   >
                     <View style={styles.modernActivityIcon}>
-                      <Text style={styles.modernActivityEmoji}>{activityCategory.emoji}</Text>
+                      <Text style={styles.modernActivityEmoji}>
+                        {isGoal ? '🎯' : activityCategory.emoji}
+                      </Text>
                     </View>
                     
                     <View style={styles.modernActivityInfo}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                          {isGoal && (
+                            <Text style={{ marginRight: 8, fontSize: 18 }}>{activityCategory.emoji}</Text>
+                          )}
                           {activity.isCompleted && (
                             <View style={[styles.completionIcon, { backgroundColor: colors.success, marginRight: 8 }]}>
                               <Text style={styles.completionIconText}>✓</Text>
@@ -1161,7 +1189,7 @@ const DailyFlowScreen = () => {
                           </Text>
                         </View>
                         
-                        {activity.rating > 0 && (
+                        {activity.isCompleted && activity.rating > 0 && (
                           <View style={[styles.modernRatingBadgeSmall, { backgroundColor: getRatingColor(activity.rating) + '30', marginRight: 35 }]}>
                             <Text style={styles.modernRatingIconSmall}>⭐</Text>
                             <Text style={[styles.modernRatingTextSmall, { color: colors.text }]}>
