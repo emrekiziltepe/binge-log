@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { registerUser, loginUser, onAuthStateChange, resendEmailVerification, loginWithGoogle, loginWithApple, sendPasswordReset } from '../services/authService';
+import { registerUser, loginUser, onAuthStateChange, resendEmailVerification, loginWithApple, sendPasswordReset } from '../services/authService';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { authStyles } from '../styles/authStyles';
 
@@ -24,7 +24,7 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
-  const [socialLoading, setSocialLoading] = useState({ google: false, apple: false });
+  const [socialLoading, setSocialLoading] = useState({ apple: false });
 
   useEffect(() => {
     // Listen to auth state
@@ -127,7 +127,7 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
           // Convert Firebase error code to user-friendly message
           const errorMessage = t(`auth.${result.error}`) || result.error || t('auth.unknownError');
           Alert.alert(t('auth.error'), errorMessage);
-          
+
           // Show in input as well if email error
           if (result.errorCode === 'auth/invalid-email') {
             setEmailError(t('auth.invalidEmail'));
@@ -142,7 +142,7 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -164,41 +164,13 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
         <View style={[styles.form, { backgroundColor: colors.card }]}>
           {/* Social Login Buttons */}
           <View style={styles.socialContainer}>
-            <TouchableOpacity
-              style={[styles.socialButton, { 
-                backgroundColor: colors.inputBackground,
-                borderColor: colors.inputBorder 
-              }]}
-              onPress={async () => {
-                setSocialLoading({ ...socialLoading, google: true });
-                try {
-                  const result = await loginWithGoogle();
-                  if (result.success) {
-                    onAuthSuccess(result.user);
-                    Alert.alert(t('auth.success'), t('auth.loginSuccess'));
-                  } else if (result.error !== 'cancelled') {
-                    const errorMessage = t(`auth.${result.error}`) || result.error || t('auth.unknownError');
-                    Alert.alert(t('auth.error'), errorMessage);
-                  }
-                } catch (error) {
-                  Alert.alert(t('auth.error'), error.message);
-                } finally {
-                  setSocialLoading({ ...socialLoading, google: false });
-                }
-              }}
-              disabled={socialLoading.google || socialLoading.apple || loading}
-            >
-              <Ionicons name="logo-google" size={20} color={colors.text} />
-              <Text style={[styles.socialButtonText, { color: colors.text }]}>
-                {socialLoading.google ? t('auth.loading') : t('auth.loginWithGoogle')}
-              </Text>
-            </TouchableOpacity>
+
 
             {Platform.OS === 'ios' && (
               <TouchableOpacity
-                style={[styles.socialButton, styles.appleButton, { 
+                style={[styles.socialButton, styles.appleButton, {
                   backgroundColor: colors.text,
-                  borderColor: colors.text 
+                  borderColor: colors.text
                 }]}
                 onPress={async () => {
                   setSocialLoading({ ...socialLoading, apple: true });
@@ -217,7 +189,7 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
                     setSocialLoading({ ...socialLoading, apple: false });
                   }
                 }}
-                disabled={socialLoading.google || socialLoading.apple || loading}
+                disabled={socialLoading.apple || loading}
               >
                 <Ionicons name="logo-apple" size={20} color={colors.background} />
                 <Text style={[styles.socialButtonText, styles.appleButtonText, { color: colors.background }]}>
@@ -240,8 +212,8 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
             <View style={styles.inputContainer}>
               <Text style={[styles.label, { color: colors.text }]}>{t('auth.displayName')}</Text>
               <TextInput
-                style={[styles.input, { 
-                  backgroundColor: colors.inputBackground, 
+                style={[styles.input, {
+                  backgroundColor: colors.inputBackground,
                   borderColor: colors.inputBorder,
                   color: colors.inputText
                 }]}
@@ -258,9 +230,9 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
             <Text style={[styles.label, { color: colors.text }]}>{t('auth.email')}</Text>
             <TextInput
               style={[
-                styles.input, 
-                { 
-                  backgroundColor: colors.inputBackground, 
+                styles.input,
+                {
+                  backgroundColor: colors.inputBackground,
                   borderColor: emailError ? colors.error : colors.inputBorder,
                   color: colors.inputText
                 }
@@ -281,8 +253,8 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: colors.text }]}>{t('auth.password')}</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.inputBackground, 
+              style={[styles.input, {
+                backgroundColor: colors.inputBackground,
                 borderColor: colors.inputBorder,
                 color: colors.inputText
               }]}
@@ -300,13 +272,13 @@ const AuthScreen = ({ onAuthSuccess, onClose }) => {
                     Alert.alert(t('auth.error'), t('auth.enterEmailForReset'));
                     return;
                   }
-                  
+
                   if (!validateEmail(email)) {
                     Alert.alert(t('auth.error'), t('auth.invalidEmail'));
                     setEmailError(t('auth.invalidEmail'));
                     return;
                   }
-                  
+
                   setLoading(true);
                   try {
                     const result = await sendPasswordReset(email);

@@ -1,4 +1,4 @@
-import { 
+import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -7,20 +7,17 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithCredential,
-  GoogleAuthProvider,
   OAuthProvider
 } from 'firebase/auth';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
 import autoSyncService from './autoSyncService';
 
 // Completion callback for WebBrowser
-WebBrowser.maybeCompleteAuthSession();
+
 
 // Convert Firebase error codes to user-friendly messages
 const getErrorMessage = (errorCode) => {
@@ -39,11 +36,8 @@ const getErrorMessage = (errorCode) => {
     'auth/apple-not-supported': 'appleNotSupported',
     'auth/apple-not-available': 'appleNotAvailable',
     'auth/apple-auth-failed': 'appleAuthFailed',
-    'auth/google-client-id-missing': 'googleAuthFailed',
-    'auth/id-token-missing': 'googleAuthFailed',
-    'auth/googleAuthFailed': 'googleAuthFailed',
   };
-  
+
   return errorMessages[errorCode] || 'unknownError';
 };
 
@@ -52,18 +46,18 @@ export const registerUser = async (email, password, displayName) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    
+
     // Update user name
     await updateProfile(user, {
       displayName: displayName
     });
-    
+
     // Send email verification link
     await sendEmailVerification(user);
-    
+
     // Log out user until email is verified
     await signOut(auth);
-    
+
     return { success: true, emailVerificationSent: true };
   } catch (error) {
     console.error('Registration error:', error);
@@ -77,18 +71,18 @@ export const loginUser = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    
+
     // Email verification check
     if (!user.emailVerified) {
       // Log out unverified user
       await signOut(auth);
-      return { 
-        success: false, 
-        error: 'emailNotVerified', 
+      return {
+        success: false,
+        error: 'emailNotVerified',
         errorCode: 'auth/email-not-verified'
       };
     }
-    
+
     return { success: true, user };
   } catch (error) {
     console.error('Login error:', error);
@@ -106,15 +100,15 @@ export const clearUserLocalData = async (userId) => {
 
     // Get all AsyncStorage keys
     const allKeys = await AsyncStorage.getAllKeys();
-    
+
     // Keys to remove (user-specific):
     // - activities_${userId}_*
     // - goals_${userId}
     // - recentActivities_${userId}
     // - offline_queue (clear on logout)
-    
+
     const keysToRemove = [];
-    
+
     for (const key of allKeys) {
       // User-specific activities
       if (key.startsWith(`activities_${userId}_`)) {
@@ -133,13 +127,13 @@ export const clearUserLocalData = async (userId) => {
         keysToRemove.push(key);
       }
     }
-    
+
     // Remove all user-specific keys
     if (keysToRemove.length > 0) {
       await AsyncStorage.multiRemove(keysToRemove);
       console.log(`Cleared ${keysToRemove.length} user-specific data keys`);
     }
-    
+
     // Also clear offline queue from memory
     try {
       await autoSyncService.clearOfflineQueue();
@@ -157,15 +151,15 @@ export const logoutUser = async () => {
   try {
     // Get user ID before signing out (auth.currentUser will be null after signOut)
     const userId = getUserId();
-    
+
     // Sign out from Firebase
     await signOut(auth);
-    
+
     // Clear user-specific local data
     if (userId) {
       await clearUserLocalData(userId);
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error('Logout error:', error);
@@ -196,11 +190,11 @@ export const resendEmailVerification = async () => {
     if (!user) {
       return { success: false, error: 'userNotLoggedIn' };
     }
-    
+
     if (user.emailVerified) {
       return { success: false, error: 'emailAlreadyVerified' };
     }
-    
+
     await sendEmailVerification(user);
     return { success: true };
   } catch (error) {
@@ -216,7 +210,7 @@ export const sendPasswordReset = async (email) => {
     if (!email) {
       return { success: false, error: 'emailRequired' };
     }
-    
+
     await sendPasswordResetEmail(auth, email);
     return { success: true };
   } catch (error) {
@@ -226,114 +220,6 @@ export const sendPasswordReset = async (email) => {
   }
 };
 
-// Login with Google
-export const loginWithGoogle = async () => {
-  try {
-    // For production, use direct OAuth flow with client IDs
-    // This is more reliable than Firebase Auth Domain endpoint
-    return await loginWithGoogleDirect();
-  } catch (error) {
-    console.error('Google login error:', error);
-    const errorKey = getErrorMessage(error.code);
-    return { success: false, error: errorKey || 'googleAuthFailed', errorCode: error.code };
-  }
-};
-
-// Login with Google (Direct OAuth - Production ready)
-const loginWithGoogleDirect = async () => {
-  try {
-    // Discovery endpoint for Google OAuth
-    const discovery = {
-      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-      tokenEndpoint: 'https://oauth2.googleapis.com/token',
-      revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-    };
-
-    // Create redirect URI
-    // For development, use custom scheme (more reliable)
-    // For production, useProxy can be true or false depending on setup
-    const redirectUri = AuthSession.makeRedirectUri({
-      useProxy: __DEV__ ? false : true, // Development'ta custom scheme kullan
-    });
-
-    // Google OAuth Client ID - platform specific
-    // Get from environment variables via app.config.js
-    const clientId = Platform.select({
-      ios: Constants.expoConfig?.extra?.googleIosClientId,
-      android: Constants.expoConfig?.extra?.googleAndroidClientId,
-      web: Constants.expoConfig?.extra?.googleWebClientId,
-      default: Constants.expoConfig?.extra?.googleWebClientId, // Fallback
-    });
-    
-    // Debug logging (only in development)
-    if (__DEV__) {
-      console.log('Google OAuth - Platform:', Platform.OS);
-      console.log('Google OAuth - Redirect URI:', redirectUri);
-      console.log('Google OAuth - Client ID configured:', !!clientId);
-    }
-    
-    // Client ID is required for production
-    if (!clientId) {
-      console.error('Google OAuth Client ID is not configured for this platform.');
-      console.error('Platform:', Platform.OS);
-      console.error('Available config keys:', Object.keys(Constants.expoConfig?.extra || {}));
-      return { 
-        success: false, 
-        error: 'googleAuthFailed', 
-        errorCode: 'auth/google-client-id-missing' 
-      };
-    }
-
-    // Create request
-    const request = new AuthSession.AuthRequest({
-      clientId,
-      scopes: ['openid', 'profile', 'email'],
-      responseType: AuthSession.ResponseType.IdToken,
-      redirectUri,
-      extraParams: {},
-    });
-
-    // Start auth session
-    const result = await request.promptAsync(discovery);
-
-    if (result.type === 'success') {
-      const { id_token } = result.params;
-      if (id_token) {
-        // Create Google credential
-        const credential = GoogleAuthProvider.credential(id_token);
-        
-        // Login with Firebase
-        const userCredential = await signInWithCredential(auth, credential);
-        
-        return { success: true, user: userCredential.user };
-      } else {
-        console.error('Google OAuth: No id_token in response');
-        return { 
-          success: false, 
-          error: 'googleAuthFailed', 
-          errorCode: 'auth/id-token-missing' 
-        };
-      }
-    } else if (result.type === 'cancel') {
-      return { success: false, error: 'cancelled', errorCode: 'auth/cancelled' };
-    } else {
-      console.error('Google OAuth: Unexpected result type:', result.type);
-      return { 
-        success: false, 
-        error: 'googleAuthFailed', 
-        errorCode: `auth/oauth-${result.type}` 
-      };
-    }
-  } catch (error) {
-    console.error('Google direct login error:', error);
-    const errorKey = getErrorMessage(error.code);
-    return { 
-      success: false, 
-      error: errorKey || 'googleAuthFailed', 
-      errorCode: error.code || 'auth/unknown-error' 
-    };
-  }
-};
 
 // Login with Apple (iOS only)
 export const loginWithApple = async () => {
@@ -362,7 +248,7 @@ export const loginWithApple = async () => {
 
     // Create Firebase OAuth provider (for Apple)
     const provider = new OAuthProvider('apple.com');
-    
+
     // Create Firebase credential with Apple credential
     const firebaseCredential = provider.credential({
       idToken: credential.identityToken,
@@ -371,7 +257,7 @@ export const loginWithApple = async () => {
 
     // Login with Firebase
     const userCredential = await signInWithCredential(auth, firebaseCredential);
-    
+
     // If new user and no displayName, use information from Apple
     if (userCredential.user && userCredential.additionalUserInfo?.isNewUser) {
       if (credential.fullName && !userCredential.user.displayName) {
@@ -383,16 +269,16 @@ export const loginWithApple = async () => {
         }
       }
     }
-    
+
     return { success: true, user: userCredential.user };
   } catch (error) {
     console.error('Apple login error:', error);
-    
+
     // If user cancelled
     if (error.code === 'ERR_REQUEST_CANCELED') {
       return { success: false, error: 'cancelled', errorCode: 'auth/cancelled' };
     }
-    
+
     const errorKey = getErrorMessage(error.code);
     return { success: false, error: errorKey, errorCode: error.code };
   }
