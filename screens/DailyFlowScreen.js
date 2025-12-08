@@ -15,9 +15,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
-import { 
-  addActivityToFirebase, 
-  updateActivityInFirebase, 
+import {
+  addActivityToFirebase,
+  updateActivityInFirebase,
   deleteActivityFromFirebase,
 } from '../services/firebaseService';
 import { getCurrentUser } from '../services/authService';
@@ -31,11 +31,11 @@ import { useActivityManagement } from '../hooks/useActivityManagement';
 import { removeDuplicates } from '../utils/commonUtils';
 import { getCategories } from '../utils/categoryUtils';
 import { formatDate, formatLocalDate } from '../utils/dateUtils';
-import { 
-  getRatingColor, 
-  formatSeriesDetail, 
-  groupActivitiesByCategory, 
-  calculateDailyStats 
+import {
+  getRatingColor,
+  formatSeriesDetail,
+  groupActivitiesByCategory,
+  calculateDailyStats
 } from '../utils/activityUtils';
 import ActivityCard from '../components/dailyFlow/ActivityCard';
 import DatePickerModal from '../components/dailyFlow/DatePickerModal';
@@ -58,19 +58,19 @@ const DailyFlowScreen = () => {
   const { t } = useTranslation();
   const { colors } = useContext(ThemeContext);
   const CATEGORIES = getCategories(t);
-  
+
   // Core state
   const [currentDate, setCurrentDate] = useState(new Date());
   const [modalType, setModalType] = useState(null); // 'add' or 'edit'
   const [editingActivity, setEditingActivity] = useState(null);
-  
+
   // Custom hooks
   const { activities, setActivities, loadActivities, saveActivities } = useActivityManagement(currentDate);
   const { currentStreak, longestStreak, calculateStreak } = useStreakCalculation();
-  
+
   const scrollViewRef = useRef(null);
   const dateScrollRef = useRef(null);
-  
+
   // Date navigation hook
   const dateNavigation = useDateNavigation(currentDate, setCurrentDate, t);
   const {
@@ -95,7 +95,7 @@ const DailyFlowScreen = () => {
     handleScrollBeginDrag,
     handleScrollEndDrag,
   } = dateNavigation;
-  
+
   // Activity form hook
   const activityForm = useActivityForm(editingActivity, modalType, scrollViewRef);
   const {
@@ -116,10 +116,10 @@ const DailyFlowScreen = () => {
     validateForm,
     formatFormDataForSave,
   } = activityForm;
-  
+
   // Goals
   const { goals } = useGoals();
-  
+
   // UI state
   const [recentActivities, setRecentActivities] = useState([]);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -127,7 +127,7 @@ const DailyFlowScreen = () => {
   const [deletingActivityId, setDeletingActivityId] = useState(null);
   const [swipeAnimations, setSwipeAnimations] = useState({});
   const [collapsedCategories, setCollapsedCategories] = useState({});
-  
+
   // Calculate daily stats from activities
   const dailyStats = useMemo(() => calculateDailyStats(activities), [activities]);
 
@@ -143,13 +143,13 @@ const DailyFlowScreen = () => {
       const user = getCurrentUser();
       if (!user) {
         // Old format for non-logged-in users
-      const stored = await AsyncStorage.getItem('recentActivities');
+        const stored = await AsyncStorage.getItem('recentActivities');
         if (stored) {
           setRecentActivities(JSON.parse(stored));
         }
         return;
       }
-      
+
       const userSpecificKey = `recentActivities_${user.uid}`;
       const stored = await AsyncStorage.getItem(userSpecificKey);
       if (stored) {
@@ -163,15 +163,18 @@ const DailyFlowScreen = () => {
 
   const saveRecentActivity = async (activity) => {
     try {
+      // Don't save completed activities to recent list
+      if (activity.isCompleted) return;
+
       const user = getCurrentUser();
       if (!user) {
         // Old format for non-logged-in users
-      const newRecent = [activity, ...recentActivities.filter(a => a.title !== activity.title)].slice(0, 5);
-      setRecentActivities(newRecent);
-      await AsyncStorage.setItem('recentActivities', JSON.stringify(newRecent));
+        const newRecent = [activity, ...recentActivities.filter(a => a.title !== activity.title)].slice(0, 5);
+        setRecentActivities(newRecent);
+        await AsyncStorage.setItem('recentActivities', JSON.stringify(newRecent));
         return;
       }
-      
+
       const newRecent = [activity, ...recentActivities.filter(a => a.title !== activity.title)].slice(0, 5);
       setRecentActivities(newRecent);
       const userSpecificKey = `recentActivities_${user.uid}`;
@@ -183,7 +186,7 @@ const DailyFlowScreen = () => {
 
   // Use utility functions for formatting
   const formatSeriesDetailMemo = useCallback((detail) => formatSeriesDetail(detail, t), [t]);
-  
+
   // Group activities using utility function
   const groupedActivities = useMemo(() => groupActivitiesByCategory(activities), [activities]);
 
@@ -200,7 +203,7 @@ const DailyFlowScreen = () => {
     const stars = [];
     for (let i = 0; i < 10; i++) {
       const isFilled = formData.rating >= i + 1;
-      
+
       stars.push(
         <TouchableOpacity
           key={i}
@@ -231,11 +234,11 @@ const DailyFlowScreen = () => {
   const openAddModalWithActivity = useCallback((activity) => {
     setEditingActivity(null);
     setIsQuickAdd(true); // Enable quick add mode
-    
+
     // Parse existing detail if available
     let seasonEpisodesArray = [{ season: '', episode: '' }];
     let detailValue = '';
-    
+
     if (activity.type === 'series' && activity.detail) {
       // Parse existing season-episode data
       if (activity.detail.includes(';')) {
@@ -262,7 +265,7 @@ const DailyFlowScreen = () => {
     } else {
       detailValue = activity.detail || '';
     }
-    
+
     setFormData({
       title: activity.title,
       category: activity.type,
@@ -317,18 +320,18 @@ const DailyFlowScreen = () => {
       }
 
       // Check for duplicates before adding (by title, type, date, and detail)
-      const isDuplicate = activities.some(a => 
+      const isDuplicate = activities.some(a =>
         a.title === activityToSave.title &&
         a.type === activityToSave.type &&
         a.date === activityToSave.date &&
         a.detail === activityToSave.detail
       );
-      
+
       if (isDuplicate) {
         Alert.alert(t('errors.error'), t('errors.duplicateActivity') || 'This activity already exists for this date.');
         return;
       }
-      
+
       // Update activities state
       const updatedActivities = [...activities, activityToSave];
       const uniqueActivities = removeDuplicates(updatedActivities);
@@ -341,17 +344,17 @@ const DailyFlowScreen = () => {
       }
 
       setActivities(uniqueActivities);
-      
+
       // Save to AsyncStorage
       await saveActivities(uniqueActivities, activityDate);
-      
+
       // Don't reload from Firebase here - it can cause duplicates if delete wasn't complete
       // The activity is already added to state and saved to AsyncStorage
       // Firebase sync will happen automatically on next app load or manual sync
-      
+
       // Calculate streak
       calculateStreak().catch(err => console.error('Streak calculation error:', err));
-      
+
       // Save to recent activities
       saveRecentActivity(activityToSave);
     } catch (error) {
@@ -371,43 +374,43 @@ const DailyFlowScreen = () => {
     }
 
     let detail = formData.detail.trim();
-    
+
     // Format duration for sports
     if (formData.category === 'sport') {
       const hours = duration.hours.trim();
       const minutes = duration.minutes.trim();
-      
+
       if (hours || minutes) {
         const hoursText = hours ? `${hours} ${t('activity.hours').toLowerCase()}` : '';
         const minutesText = minutes ? `${minutes} ${t('activity.minutes').toLowerCase()}` : '';
         detail = [hoursText, minutesText].filter(text => text).join(' ') || '';
       }
     }
-    
+
     // Special validation for series
     if (formData.category === 'series') {
       // Check all season-episode pairs
       for (let i = 0; i < seasonEpisodes.length; i++) {
         const { season, episode } = seasonEpisodes[i];
-        
+
         if (!season.trim() || !episode.trim()) {
           Alert.alert(t('errors.error'), t('errors.seasonEpisodeRequired', { row: i + 1 }));
           return;
         }
-        
+
         const seasonNum = parseInt(season);
         if (seasonNum <= 0) {
           Alert.alert(t('errors.error'), t('errors.seasonMustBePositive', { row: i + 1 }));
           return;
         }
-        
+
         // Split episodes by comma and check
         const episodes = episode.split(',').map(ep => ep.trim()).filter(ep => ep);
         if (episodes.length === 0) {
           Alert.alert(t('errors.error'), t('errors.episodeRequired', { row: i + 1 }));
           return;
         }
-        
+
         // Check that each episode is a valid number
         for (const ep of episodes) {
           const episodeNum = parseInt(ep);
@@ -417,13 +420,13 @@ const DailyFlowScreen = () => {
           }
         }
       }
-      
+
       // Combine all season-episode pairs
       const seasonEpisodeStrings = seasonEpisodes.map(({ season, episode }) => {
         const episodes = episode.split(',').map(ep => ep.trim()).filter(ep => ep);
         return `${season},${episodes.join(',')}`;
       });
-      
+
       detail = seasonEpisodeStrings.join(';');
     }
 
@@ -442,13 +445,13 @@ const DailyFlowScreen = () => {
       // New activity - use current date
       activityDate = currentDate;
     }
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const activityDateOnly = new Date(activityDate);
     activityDateOnly.setHours(0, 0, 0, 0);
     const isFutureDate = activityDateOnly > today;
-    
+
     // If activity is completed or date is today/past, it's not a goal
     const isGoal = isFutureDate && !formData.isCompleted;
 
@@ -465,24 +468,24 @@ const DailyFlowScreen = () => {
     };
 
     try {
-    let updatedActivities;
-    if (editingActivity) {
+      let updatedActivities;
+      if (editingActivity) {
         // Edit mode - update to Firebase
         // Use firebaseId if available, otherwise use id (for backward compatibility)
         const firebaseDocId = editingActivity.firebaseId || editingActivity.id;
         await updateActivityInFirebase(firebaseDocId, newActivity);
-      updatedActivities = activities.map(a => 
-        a.id === editingActivity.id ? newActivity : a
-      );
-    } else {
+        updatedActivities = activities.map(a =>
+          a.id === editingActivity.id ? newActivity : a
+        );
+      } else {
         // Ekleme modu - Firebase'e ekle (eğer kullanıcı giriş yapmışsa)
         const user = getCurrentUser();
-        
+
         if (user) {
           try {
-        const firebaseId = await addActivityToFirebase(newActivity);
+            const firebaseId = await addActivityToFirebase(newActivity);
             if (firebaseId) {
-        newActivity.firebaseId = firebaseId;
+              newActivity.firebaseId = firebaseId;
             }
           } catch (firebaseError) {
             // Firebase'e ekleme başarısız oldu
@@ -494,13 +497,13 @@ const DailyFlowScreen = () => {
             );
           }
         }
-      updatedActivities = [...activities, newActivity];
-      saveRecentActivity(newActivity);
-    }
-    
+        updatedActivities = [...activities, newActivity];
+        saveRecentActivity(newActivity);
+      }
+
       // Duplicate check
       const uniqueActivities = removeDuplicates(updatedActivities);
-      
+
       // Configure layout animation before state update
       try {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -508,23 +511,23 @@ const DailyFlowScreen = () => {
         // Ignore layout animation errors
         console.warn('LayoutAnimation error:', layoutError);
       }
-      
+
       setActivities(uniqueActivities);
       // Save activities for the activity's date (important when editing activities from different dates)
-      const activityDateForSave = editingActivity && editingActivity.date 
-        ? (typeof editingActivity.date === 'string' 
-            ? new Date(editingActivity.date + 'T00:00:00')
-            : new Date(editingActivity.date))
+      const activityDateForSave = editingActivity && editingActivity.date
+        ? (typeof editingActivity.date === 'string'
+          ? new Date(editingActivity.date + 'T00:00:00')
+          : new Date(editingActivity.date))
         : activityDate;
       await saveActivities(uniqueActivities, activityDateForSave);
-      
+
       // Don't reload from Firebase here - it can cause duplicates
       // The activity is already added to state and saved to AsyncStorage
       // Firebase sync will happen automatically on next app load or manual sync
-      
+
       // Calculate streak asynchronously without blocking
       calculateStreak().catch(err => console.error('Streak calculation error:', err));
-    closeModal();
+      closeModal();
     } catch (error) {
       console.error('Firebase save error:', error);
       Alert.alert(t('errors.error'), t('errors.saveError'));
@@ -535,30 +538,30 @@ const DailyFlowScreen = () => {
   const editActivity = useCallback((activity) => {
     // Update all states at once
     setEditingActivity(activity);
-    
+
     let season = '';
     let episode = '';
     let detail = activity.detail || '';
     let seasonEpisodesArray = [{ season: '', episode: '' }];
     let durationValue = { hours: '', minutes: '' };
-    
+
     // Parse duration for sports
     if (activity.type === 'sport' && activity.detail) {
       const detailText = activity.detail.toLowerCase();
       // Parse "1 hour 30 minutes" or similar format
       const hoursMatch = detailText.match(/(\d+)\s*(saat|hour|hours|s)/);
       const minutesMatch = detailText.match(/(\d+)\s*(dakika|minute|minutes|d|min)/);
-      
+
       if (hoursMatch) {
         durationValue.hours = hoursMatch[1];
       }
       if (minutesMatch) {
         durationValue.minutes = minutesMatch[1];
       }
-      
+
       detail = '';
     }
-    
+
     // Split season and episode for series
     if (activity.type === 'series' && activity.detail) {
       // Multiple season check
@@ -587,7 +590,7 @@ const DailyFlowScreen = () => {
         }
       }
     }
-    
+
     setFormData({
       title: activity.title,
       category: activity.type,
@@ -622,7 +625,7 @@ const DailyFlowScreen = () => {
                   slideAnimation.setValue(0);
                 }
               }
-              
+
               // Delete from Firebase if user is logged in
               const user = getCurrentUser();
               if (user) {
@@ -637,9 +640,9 @@ const DailyFlowScreen = () => {
                   // The activity will be removed from local state and AsyncStorage
                 }
               }
-              
-            // Layout animasyonu ile silme efekti
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+              // Layout animasyonu ile silme efekti
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               // Filter by both id and firebaseId to ensure complete removal
               const updatedActivities = activities.filter(a => {
                 // Remove if id matches
@@ -651,21 +654,21 @@ const DailyFlowScreen = () => {
               // Duplicate check
               const uniqueActivities = removeDuplicates(updatedActivities);
               setActivities(uniqueActivities);
-              
+
               // Save activities for the activity's date
               const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : currentDate;
               await saveActivities(uniqueActivities, activityDate);
-              
+
               // Don't reload from Firebase - it can bring back deleted activities
               // The activity is already removed from state and AsyncStorage
-              
+
               // Clear animation value for deleted activity
               setSwipeAnimations(prev => {
                 const newSwipeAnimations = { ...prev };
                 delete newSwipeAnimations[activity.id];
                 return newSwipeAnimations;
               });
-              
+
               calculateStreak(); // Update streak
             } catch (error) {
               console.error('Delete activity error:', error);
@@ -680,18 +683,18 @@ const DailyFlowScreen = () => {
   const handleSwipeDelete = async (activity) => {
     // Set deleting state FIRST to immediately hide delete button
     setDeletingActivityId(activity.id);
-    
+
     // Immediately close swipe state and reset animation if this activity is swiped
     if (swipedActivityId === activity.id) {
       setSwipedActivityId(null);
     }
-    
+
     // Reset animation immediately to hide delete button
     const existingAnimation = swipeAnimations[activity.id];
     if (existingAnimation) {
       existingAnimation.setValue(0);
     }
-    
+
     // Get or create animation for this activity
     let slideAnimation = existingAnimation || swipeAnimations[activity.id];
     if (!slideAnimation) {
@@ -701,7 +704,7 @@ const DailyFlowScreen = () => {
         [activity.id]: slideAnimation
       }));
     }
-    
+
     Animated.parallel([
       // Quickly swipe card to the left
       Animated.timing(slideAnimation, {
@@ -725,7 +728,7 @@ const DailyFlowScreen = () => {
             // The activity will be removed from local state and AsyncStorage
           }
         }
-        
+
         // Animasyon bittikten sonra sil - filter by both id and firebaseId
         const updatedActivities = activities.filter(a => {
           // Remove if id matches
@@ -735,26 +738,26 @@ const DailyFlowScreen = () => {
           return true;
         });
         // Duplicate check
-      const uniqueActivities = removeDuplicates(updatedActivities);
-      setActivities(uniqueActivities);
-        
+        const uniqueActivities = removeDuplicates(updatedActivities);
+        setActivities(uniqueActivities);
+
         // Save activities for the activity's date
         const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : currentDate;
         await saveActivities(uniqueActivities, activityDate);
-        
+
         // Don't reload from Firebase - it can bring back deleted activities
         // The activity is already removed from state and AsyncStorage
-        
+
         // Calculate streak
         calculateStreak().catch(err => console.error('Streak calculation error:', err));
-        
+
         // Clear animation value and reset swipe state using functional update
         setSwipeAnimations(prev => {
           const newSwipeAnimations = { ...prev };
-      delete newSwipeAnimations[activity.id];
+          delete newSwipeAnimations[activity.id];
           return newSwipeAnimations;
         });
-        
+
         // Reset swipe state if the deleted activity was the swiped one
         setSwipedActivityId(prev => prev === activity.id ? null : prev);
         setDeletingActivityId(null);
@@ -768,7 +771,7 @@ const DailyFlowScreen = () => {
 
   const createSwipePanResponder = (activity) => {
     const slideAnimation = swipeAnimations[activity.id] || new Animated.Value(0);
-    
+
     return PanResponder.create({
       onMoveShouldSetPanResponder: (evt, gestureState) => {
         // Only for horizontal movement
@@ -818,9 +821,9 @@ const DailyFlowScreen = () => {
     const detailText = activity.detail ? `\n\n${category.detailLabel}: ${activity.detail}` : '';
     Alert.alert(
       t('activity.activityDetails'),
-      t('activity.activityDetailsText', { 
-        title: activity.title, 
-        category: category.name, 
+      t('activity.activityDetailsText', {
+        title: activity.title,
+        category: category.name,
         emoji: category.emoji,
         detail: activity.detail ? `\n\n${category.detailLabel}: ${activity.detail}` : '',
         timestamp: new Date(activity.timestamp).toLocaleString(i18n.language === 'tr' ? 'tr-TR' : 'en-US')
@@ -839,7 +842,7 @@ const DailyFlowScreen = () => {
     today.setHours(0, 0, 0, 0);
     const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
     activityDate.setHours(0, 0, 0, 0);
-    
+
     // Check if activity date is today or in the past
     if (activityDate <= today) {
       try {
@@ -858,7 +861,7 @@ const DailyFlowScreen = () => {
         // When activities are loaded from Firebase, id is set to the Firebase doc ID
         // If activity has firebaseId, use that instead (for backward compatibility)
         const firebaseDocId = activity.firebaseId || activity.id;
-        
+
         // Update in Firebase - updateActivityInFirebase will handle document existence check
         // But we need to ensure we're using the correct Firebase document ID
         await updateActivityInFirebase(firebaseDocId, {
@@ -870,9 +873,9 @@ const DailyFlowScreen = () => {
         // Filter out the old activity (by ID) and add the updated one
         const filteredActivities = activities.filter(a => a.id !== activity.id);
         const updatedActivities = [...filteredActivities, updatedActivity];
-        
+
         const uniqueActivities = removeDuplicates(updatedActivities);
-        
+
         // Configure layout animation before state update
         try {
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -880,14 +883,14 @@ const DailyFlowScreen = () => {
           // Ignore layout animation errors
           console.warn('LayoutAnimation error:', layoutError);
         }
-        
+
         setActivities(uniqueActivities);
         await saveActivities(uniqueActivities, todayDateString);
         calculateStreak();
-        
+
         // Don't reload from Firebase - it can bring back old data
         // The activity is already updated in state and AsyncStorage
-        
+
         Alert.alert(
           t('activity.completedGoal'),
           t('activity.goalCompletedMessage', { title: activity.title })
@@ -915,7 +918,7 @@ const DailyFlowScreen = () => {
     const dayOfWeek = startOfWeek.getDay();
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Monday start
     startOfWeek.setDate(startOfWeek.getDate() + diff);
-    
+
     for (let i = 0; i < 7; i++) {
       const day = new Date(startOfWeek);
       day.setDate(day.getDate() + i);
@@ -925,18 +928,18 @@ const DailyFlowScreen = () => {
   }, [currentDate]);
 
   const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
-  
+
   const isToday = (date) => {
     const today = new Date();
     return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear();
   };
 
   const isSelected = (date) => {
     return date.getDate() === currentDate.getDate() &&
-           date.getMonth() === currentDate.getMonth() &&
-           date.getFullYear() === currentDate.getFullYear();
+      date.getMonth() === currentDate.getMonth() &&
+      date.getFullYear() === currentDate.getFullYear();
   };
 
   // Auto-scroll to selected date - center it on screen
@@ -948,16 +951,16 @@ const DailyFlowScreen = () => {
       const cardMargin = 10; // Margin right of each card
       const totalCardWidth = cardWidth + cardMargin;
       const paddingStart = 16; // ContentContainer paddingHorizontal (left)
-      
+
       // Calculate the position of the card's left edge
       const cardLeftPosition = paddingStart + (selectedIndex * totalCardWidth);
-      
+
       // Calculate scroll position to center the card
       // We want: cardCenter = screenWidth / 2
       // cardCenter = scrollPosition + (screenWidth / 2)
       // So: scrollPosition = cardLeftPosition + (cardWidth / 2) - (screenWidth / 2)
       const scrollPosition = cardLeftPosition + (cardWidth / 2) - (screenWidth / 2);
-      
+
       setTimeout(() => {
         dateScrollRef.current?.scrollTo({
           x: Math.max(0, scrollPosition),
@@ -968,14 +971,14 @@ const DailyFlowScreen = () => {
   }, [currentDate, weekDays]);
 
   return (
-    <View 
+    <View
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       {/* Horizontal Date Picker - Below Navigation Header */}
       <View style={[styles.dateScrollContainer, { backgroundColor: colors.surface + 'CC', borderBottomColor: colors.border }]}>
-        <ScrollView 
+        <ScrollView
           ref={dateScrollRef}
-          horizontal 
+          horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.horizontalDateScroll}
           contentContainerStyle={styles.horizontalDateContent}
@@ -983,7 +986,7 @@ const DailyFlowScreen = () => {
           {weekDays.map((day, index) => {
             const isCurrentDay = isToday(day);
             const isSelectedDay = isSelected(day);
-            
+
             return (
               <TouchableOpacity
                 key={index}
@@ -991,10 +994,10 @@ const DailyFlowScreen = () => {
                   styles.dateCard,
                   isCurrentDay && styles.dateCardToday,
                   isSelectedDay && styles.dateCardSelected,
-                  { 
-                    backgroundColor: isCurrentDay ? '#2bee6c' : 
-                                   isSelectedDay ? colors.primary : 
-                                   colors.card
+                  {
+                    backgroundColor: isCurrentDay ? '#2bee6c' :
+                      isSelectedDay ? colors.primary :
+                        colors.card
                   }
                 ]}
                 onPress={() => {
@@ -1041,11 +1044,11 @@ const DailyFlowScreen = () => {
       )}
 
       {/* Modern Activity List - with swipe to change date */}
-      <View 
+      <View
         style={styles.modernActivityListWrapper}
         {...dateSwipeResponder.panHandlers}
       >
-        <ScrollView 
+        <ScrollView
           ref={scrollViewRef}
           style={styles.modernActivityList}
           contentContainerStyle={styles.modernActivityListContent}
@@ -1053,169 +1056,167 @@ const DailyFlowScreen = () => {
           onScrollEndDrag={handleScrollEndDrag}
           scrollEventThrottle={16}
         >
-        {activities.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('activity.noActivitiesYet')}</Text>
-            <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>{t('activity.addFirstActivity')}</Text>
-          </View>
-        ) : (
-          <View style={styles.modernActivitiesWrapper}>{activities.map((activity) => {
-            const activityCategory = CATEGORIES[activity.type];
-            const isSwiped = swipedActivityId === activity.id;
-            const isDeleting = deletingActivityId === activity.id;
-            
-            // Check if activity is a goal (future-dated)
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
-            activityDate.setHours(0, 0, 0, 0);
-            const isFutureDate = activityDate > today;
-            const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
-            
-            // Initialize animation
-            if (!swipeAnimations[activity.id]) {
-              setSwipeAnimations(prev => ({
-                ...prev,
-                [activity.id]: new Animated.Value(0)
-              }));
-            }
-            
-            let slideAnimation = swipeAnimations[activity.id] || new Animated.Value(0);
-            
-            return (
-              <View key={activity.id} style={styles.modernActivityCardWrapper}>
-                {/* Delete button - shows when swiped */}
-                {!isDeleting && isSwiped && (
-                  <Animated.View 
+          {activities.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('activity.noActivitiesYet')}</Text>
+              <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>{t('activity.addFirstActivity')}</Text>
+            </View>
+          ) : (
+            <View style={styles.modernActivitiesWrapper}>{activities.map((activity) => {
+              const activityCategory = CATEGORIES[activity.type];
+              const isSwiped = swipedActivityId === activity.id;
+              const isDeleting = deletingActivityId === activity.id;
+
+              // Check if activity is a goal (future-dated)
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const activityDate = activity.date ? new Date(activity.date + 'T00:00:00') : new Date();
+              activityDate.setHours(0, 0, 0, 0);
+              const isFutureDate = activityDate > today;
+              const isGoal = activity.isGoal || (isFutureDate && !activity.isCompleted);
+
+              // Initialize animation
+              if (!swipeAnimations[activity.id]) {
+                setSwipeAnimations(prev => ({
+                  ...prev,
+                  [activity.id]: new Animated.Value(0)
+                }));
+              }
+
+              let slideAnimation = swipeAnimations[activity.id] || new Animated.Value(0);
+
+              return (
+                <View key={activity.id} style={styles.modernActivityCardWrapper}>
+                  {/* Delete button - shows when swiped */}
+                  {!isDeleting && isSwiped && (
+                    <Animated.View
+                      style={[
+                        styles.modernDeleteContainer,
+                        {
+                          transform: [
+                            {
+                              translateX: slideAnimation.interpolate({
+                                inputRange: [-70, 0],
+                                outputRange: [0, 70],
+                                extrapolate: 'clamp',
+                              })
+                            }
+                          ],
+                          opacity: slideAnimation.interpolate({
+                            inputRange: [-70, -35, 0],
+                            outputRange: [1, 0.5, 0],
+                            extrapolate: 'clamp',
+                          }),
+                        }
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={styles.modernDeleteTouchable}
+                        onPress={() => handleSwipeDelete(activity)}
+                      >
+                        <TrashIcon size={28} color="#ef4444" />
+                      </TouchableOpacity>
+                    </Animated.View>
+                  )}
+
+                  {/* Modern Activity Card */}
+                  <Animated.View
                     style={[
-                      styles.modernDeleteContainer,
+                      styles.modernActivityCard,
                       {
-                        transform: [
-                          {
-                            translateX: slideAnimation.interpolate({
-                              inputRange: [-70, 0],
-                              outputRange: [0, 70],
-                              extrapolate: 'clamp',
-                            })
-                          }
-                        ],
-                        opacity: slideAnimation.interpolate({
-                          inputRange: [-70, -35, 0],
-                          outputRange: [1, 0.5, 0],
-                          extrapolate: 'clamp',
-                        }),
-                      }
+                        backgroundColor: activity.isCompleted ? colors.successLight : colors.card,
+                        borderColor: activity.isCompleted ? colors.success : '#2bee6c80',
+                        transform: [{ translateX: slideAnimation }],
+                      },
+                      isDeleting && { opacity: 0 }
                     ]}
                   >
-                    <TouchableOpacity 
-                      style={styles.modernDeleteTouchable}
-                      onPress={() => handleSwipeDelete(activity)}
+                    {/* Chevron indicator - moves with card */}
+                    {!isDeleting && (
+                      <View style={styles.modernChevronIndicatorFixed}>
+                        <TouchableOpacity
+                          style={styles.modernChevronButton}
+                          onPress={() => {
+                            if (isSwiped) {
+                              Animated.spring(slideAnimation, {
+                                toValue: 0,
+                                useNativeDriver: true,
+                                tension: 100,
+                                friction: 8,
+                              }).start();
+                              setSwipedActivityId(null);
+                            } else {
+                              Animated.spring(slideAnimation, {
+                                toValue: -70,
+                                useNativeDriver: true,
+                                tension: 100,
+                                friction: 8,
+                              }).start();
+                              setSwipedActivityId(activity.id);
+                            }
+                          }}
+                          hitSlop={{ top: 10, bottom: 10, left: 15, right: 5 }}
+                        >
+                          <View style={styles.chevronContainer}>
+                            <View style={[styles.chevronLine, styles.chevronTop, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
+                            <View style={[styles.chevronLine, styles.chevronBottom, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    <Pressable
+                      style={styles.modernActivityContent}
+                      onPress={() => editActivity(activity)}
+                      onLongPress={isGoal ? () => handleGoalComplete(activity) : undefined}
                     >
-                      <TrashIcon size={28} color="#ef4444" />
-                    </TouchableOpacity>
-                  </Animated.View>
-                )}
-                
-                {/* Modern Activity Card */}
-                <Animated.View
-                  style={[
-                    styles.modernActivityCard,
-                    { 
-                      backgroundColor: activity.isCompleted ? colors.successLight : colors.card,
-                      borderColor: activity.isCompleted ? colors.success : '#2bee6c80',
-                      transform: [{ translateX: slideAnimation }],
-                    },
-                    isDeleting && { opacity: 0 }
-                  ]}
-                >
-                  {/* Chevron indicator - moves with card */}
-                  {!isDeleting && (
-                    <View style={styles.modernChevronIndicatorFixed}>
-                      <TouchableOpacity 
-                        style={styles.modernChevronButton}
-                        onPress={() => {
-                          if (isSwiped) {
-                            Animated.spring(slideAnimation, {
-                              toValue: 0,
-                              useNativeDriver: true,
-                              tension: 100,
-                              friction: 8,
-                            }).start();
-                            setSwipedActivityId(null);
-                          } else {
-                            Animated.spring(slideAnimation, {
-                              toValue: -70,
-                              useNativeDriver: true,
-                              tension: 100,
-                              friction: 8,
-                            }).start();
-                            setSwipedActivityId(activity.id);
-                          }
-                        }}
-                        hitSlop={{ top: 10, bottom: 10, left: 15, right: 5 }}
-                      >
-                        <View style={styles.chevronContainer}>
-                          <View style={[styles.chevronLine, styles.chevronTop, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
-                          <View style={[styles.chevronLine, styles.chevronBottom, { borderColor: isSwiped ? '#dc2626' : '#ef4444' }]} />
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  
-                  <Pressable 
-                    style={styles.modernActivityContent}
-                    onPress={() => editActivity(activity)}
-                    onLongPress={isGoal ? () => handleGoalComplete(activity) : undefined}
-                  >
-                    <View style={styles.modernActivityIcon}>
-                      <Text style={styles.modernActivityEmoji}>
-                        {isGoal ? '🎯' : activityCategory.emoji}
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.modernActivityInfo}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                          {isGoal && (
-                            <Text style={{ marginRight: 8, fontSize: 18 }}>{activityCategory.emoji}</Text>
-                          )}
-                          {activity.isCompleted && (
-                            <View style={[styles.completionIcon, { backgroundColor: colors.success, marginRight: 8 }]}>
-                              <Text style={styles.completionIconText}>✓</Text>
-                            </View>
-                          )}
-                          <Text style={[styles.modernActivityTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>
-                            {activity.title}
-                          </Text>
-                        </View>
-                        
-                        {activity.isCompleted && activity.rating > 0 && (
-                          <View style={[styles.modernRatingBadgeSmall, { backgroundColor: getRatingColor(activity.rating) + '30', marginRight: 35 }]}>
-                            <Text style={styles.modernRatingIconSmall}>⭐</Text>
-                            <Text style={[styles.modernRatingTextSmall, { color: colors.text }]}>
-                              {activity.rating}
+                      <View style={styles.modernActivityIcon}>
+                        <Text style={styles.modernActivityEmoji}>
+                          {isGoal ? '🎯' : activityCategory.emoji}
+                        </Text>
+                      </View>
+
+                      <View style={styles.modernActivityInfo}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            {isGoal && (
+                              <Text style={{ marginRight: 8, fontSize: 18 }}>{activityCategory.emoji}</Text>
+                            )}
+                            {activity.isCompleted && (
+                              <View style={[styles.completionIcon, { backgroundColor: colors.success, marginRight: 8 }]}>
+                                <Text style={styles.completionIconText}>✓</Text>
+                              </View>
+                            )}
+                            <Text style={[styles.modernActivityTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>
+                              {activity.title}
                             </Text>
                           </View>
+
+                          {activity.isCompleted && activity.rating > 0 && (
+                            <View style={[styles.modernRatingBadgeSmall, { backgroundColor: getRatingColor(activity.rating) + '30', marginRight: 35 }]}>
+                              <Text style={styles.modernRatingIconSmall}>⭐</Text>
+                              <Text style={[styles.modernRatingTextSmall, { color: colors.text }]}>
+                                {activity.rating}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        {activity.detail && (
+                          <Text style={[styles.modernActivityDetail, { color: colors.textSecondary }]} numberOfLines={1}>
+                            {activity.type === 'series'
+                              ? formatSeriesDetailMemo(activity.detail)
+                              : activity.type === 'book'
+                                ? `${activityCategory.detailLabel}: ${activity.detail}`
+                                : activity.detail}
+                          </Text>
                         )}
                       </View>
-                      {activity.detail && (
-                        <Text style={[styles.modernActivityDetail, { color: colors.textSecondary }]} numberOfLines={1}>
-                          {activity.type === 'series' 
-                            ? formatSeriesDetailMemo(activity.detail)
-                            : activity.type === 'book'
-                            ? `${activityCategory.detailLabel}: ${activity.detail}`
-                            : activity.type === 'sport'
-                            ? activity.detail
-                            : `${activityCategory.detailLabel}: ${activity.detail}`}
-                        </Text>
-                      )}
-                    </View>
-                  </Pressable>
-                </Animated.View>
-              </View>
-            );
-          })}</View>
-        )}
+                    </Pressable>
+                  </Animated.View>
+                </View>
+              );
+            })}</View>
+          )}
         </ScrollView>
       </View>
 
@@ -1227,39 +1228,42 @@ const DailyFlowScreen = () => {
             { backgroundColor: '#283944' }
           ]}>
             <Text style={styles.quickActivitiesTitle}>{t('activity.recent') || 'Son Aktiviteler'}</Text>
-            {recentActivities.slice(0, 3).map((recent, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.quickActivityItem}
-                onPress={() => openAddModalWithActivity(recent)}
-              >
-                <View style={styles.quickActivityIcon}>
-                  <Text style={styles.quickActivityEmoji}>{CATEGORIES[recent.type]?.emoji}</Text>
-                </View>
-                <View style={styles.quickActivityInfo}>
-                  <Text style={styles.quickActivityTitle} numberOfLines={1}>{recent.title}</Text>
-                  {recent.detail && (
-                    <Text style={styles.quickActivitySubtitle} numberOfLines={1}>
-                      {recent.type === 'series' ? formatSeriesDetailMemo(recent.detail) : recent.detail}
-                    </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
+            {recentActivities
+              .filter(a => !a.isCompleted)
+              .slice(0, 3)
+              .map((recent, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.quickActivityItem}
+                  onPress={() => openAddModalWithActivity(recent)}
+                >
+                  <View style={styles.quickActivityIcon}>
+                    <Text style={styles.quickActivityEmoji}>{CATEGORIES[recent.type]?.emoji}</Text>
+                  </View>
+                  <View style={styles.quickActivityInfo}>
+                    <Text style={styles.quickActivityTitle} numberOfLines={1}>{recent.title}</Text>
+                    {recent.detail && (
+                      <Text style={styles.quickActivitySubtitle} numberOfLines={1}>
+                        {recent.type === 'series' ? formatSeriesDetailMemo(recent.detail) : recent.detail}
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
           </Animated.View>
         )}
-        
+
         <View style={styles.fabButtons}>
           {recentActivities.length > 0 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.fabButtonSmall, { backgroundColor: '#3c3c3c' }]}
               onPress={() => setShowQuickAdd(!showQuickAdd)}
             >
               <Ionicons name="flash" size={28} color="#fff" />
             </TouchableOpacity>
           )}
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.fabButtonLarge, { backgroundColor: '#4831d4' }]}
             onPress={addActivity}
           >
@@ -1270,7 +1274,7 @@ const DailyFlowScreen = () => {
 
       {/* Modals - Keep functional */}
 
-      
+
       {/* Date and Activity Form Modals */}
       <DatePickerModal
         visible={showDatePicker}

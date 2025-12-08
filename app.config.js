@@ -41,7 +41,7 @@ const getConfig = () => {
     expo: {
       name: "Binge Log",
       slug: "binge-log",
-      version: "1.0.4",
+      version: "1.1.1",
       orientation: "portrait",
       icon: "./assets/icon.png",
       userInterfaceStyle: "light",
@@ -87,7 +87,8 @@ const getConfig = () => {
         firebaseMessagingSenderId: currentConfig.messagingSenderId,
         firebaseAppId: currentConfig.appId,
         firebaseMeasurementId: currentConfig.measurementId,
-
+        // Placeholder Privacy Policy - Update before submission
+        privacyPolicyUrl: "https://docs.google.com/document/d/1APTh8hRmSCsqU-mCBkdxkRUezTMJ2cKwHhQ8S2DslRo/edit?tab=t.0",
       }
     }
   };
