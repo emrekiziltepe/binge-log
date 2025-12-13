@@ -134,6 +134,8 @@ export default function YearlySummary({
         let mainValue = '';
         let mainLabel = '';
         let wrappedMessage = '';
+        let wrappedMessageTop = '';
+        let wrappedMessageBottom = '';
         const topActivity = getTopActivityForCategory(category, data);
         
         if (category === 'book') {
@@ -144,6 +146,8 @@ export default function YearlySummary({
               completedBooks++;
             }
           });
+          // Count total unique books read (regardless of completion)
+          const totalBooksRead = Object.keys(data.groupedActivities || {}).length;
           let totalPages = 0;
           Object.values(data.groupedActivities || {}).forEach(activityGroup => {
             activityGroup.details.forEach(detail => {
@@ -151,12 +155,21 @@ export default function YearlySummary({
               totalPages += pages;
             });
           });
-          mainValue = completedBooks.toString();
-          mainLabel = t('statistics.booksCompleted', { count: completedBooks });
-          wrappedMessage = totalPages > 0 ? `${totalPages} ${t('goals.pages')}` : '';
+          mainValue = totalBooksRead.toString();
+          mainLabel = t('statistics.booksReadLabel');
+          wrappedMessageTop = totalPages > 0 ? t('statistics.totalPagesRead', { count: totalPages }) : '';
+          wrappedMessageBottom = completedBooks > 0 ? t('statistics.booksCompleted', { count: completedBooks }) : '';
         } else if (category === 'series') {
           // Count unique series (different series watched)
           const uniqueSeriesCount = Object.keys(data.groupedActivities || {}).length;
+          
+          // Count completed series
+          let completedSeries = 0;
+          Object.values(data.groupedActivities || {}).forEach(activityGroup => {
+            if (activityGroup.activities && activityGroup.activities.some(a => a.isCompleted)) {
+              completedSeries++;
+            }
+          });
           
           // Calculate total episodes watched
           let totalEpisodes = 0;
@@ -176,26 +189,27 @@ export default function YearlySummary({
           });
           
           mainValue = uniqueSeriesCount.toString();
-          mainLabel = t('statistics.seriesWatched', { count: uniqueSeriesCount });
+          mainLabel = t('statistics.seriesWatchedLabel');
           wrappedMessage = t('statistics.seriesEpisodes', { count: totalEpisodes });
+          wrappedMessageBottom = completedSeries > 0 ? t('statistics.seriesCompleted', { count: completedSeries }) : '';
         } else if (category === 'movie') {
           mainValue = data.count.toString();
-          mainLabel = t('statistics.moviesWatched', { count: data.count });
+          mainLabel = t('statistics.moviesWatchedLabel');
           wrappedMessage = '';
         } else if (category === 'game') {
+          // Count unique games (different games played)
+          const uniqueGamesCount = Object.keys(data.groupedActivities || {}).length;
           let completedGames = 0;
           Object.values(data.groupedActivities || {}).forEach(activityGroup => {
             if (activityGroup.activities && activityGroup.activities.some(a => a.isCompleted)) {
               completedGames++;
             }
           });
-          mainValue = data.count.toString();
-          mainLabel = t('statistics.gamesPlayed', { count: data.count });
-          wrappedMessage = completedGames > 0 ? `${completedGames} ${t('statistics.totalCompleted').toLowerCase()}` : '';
+          mainValue = uniqueGamesCount.toString();
+          mainLabel = t('statistics.gamesPlayedLabel');
         } else if (category === 'education') {
           mainValue = data.count.toString();
-          mainLabel = t('statistics.coursesLearned', { count: data.count });
-          wrappedMessage = '';
+          mainLabel = t('statistics.coursesLearnedLabel');
         } else if (category === 'sport') {
           let totalHours = 0;
           Object.values(data.groupedActivities || {}).forEach(activityGroup => {
@@ -215,7 +229,7 @@ export default function YearlySummary({
             });
           });
           mainValue = totalHours.toFixed(1);
-          mainLabel = t('statistics.hoursTrained', { count: totalHours.toFixed(1) });
+          mainLabel = t('statistics.hoursTrainedLabel');
           wrappedMessage = '';
         }
 
@@ -232,7 +246,12 @@ export default function YearlySummary({
               activeOpacity={0.7}
             >
               <View style={styles.wrappedCardNumberContainer}>
-                <Text style={styles.wrappedCardNumber}>{mainValue}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.wrappedCardNumber}>{mainValue}</Text>
+                  {mainLabel && (
+                    <Text style={[styles.wrappedCardLabel, { marginLeft: 8 }]}>{mainLabel}</Text>
+                  )}
+                </View>
                 <Ionicons 
                   name={isExpanded ? "chevron-up" : "chevron-down"} 
                   size={20} 
@@ -241,9 +260,24 @@ export default function YearlySummary({
                 />
               </View>
             </TouchableOpacity>
-            <Text style={styles.wrappedCardLabel}>{mainLabel}</Text>
-            {wrappedMessage && (
-              <Text style={styles.wrappedCardSubtext}>{wrappedMessage}</Text>
+            {category === 'book' ? (
+              <>
+                {wrappedMessageTop && (
+                  <Text style={styles.wrappedCardSubtext}>{wrappedMessageTop}</Text>
+                )}
+                {wrappedMessageBottom && (
+                  <Text style={styles.wrappedCardSubtext}>{wrappedMessageBottom}</Text>
+                )}
+              </>
+            ) : (
+              <>
+                {wrappedMessage && (
+                  <Text style={styles.wrappedCardSubtext}>{wrappedMessage}</Text>
+                )}
+                {wrappedMessageBottom && (
+                  <Text style={styles.wrappedCardSubtext}>{wrappedMessageBottom}</Text>
+                )}
+              </>
             )}
             {topActivity && !isExpanded && (
               <Text style={styles.wrappedCardTopActivity}>
@@ -264,8 +298,8 @@ export default function YearlySummary({
                     }, 0);
                     const isCompleted = activityGroup.activities.some(a => a.isCompleted);
                     detailText = totalPages > 0 
-                      ? `${totalPages} ${t('goals.pages')}${isCompleted ? ` • ${t('statistics.totalCompleted')}` : ''}`
-                      : (isCompleted ? t('statistics.totalCompleted') : '');
+                      ? `${totalPages} ${t('goals.pages')}${isCompleted ? ` • ✓` : ''}`
+                      : (isCompleted ? '• ✓' : '');
                   } else if (category === 'series') {
                     let totalEpisodes = 0;
                     activityGroup.details.forEach(detail => {
@@ -285,7 +319,7 @@ export default function YearlySummary({
                     detailText = `${activityGroup.count} ${t('statistics.activities')}`;
                   } else if (category === 'game') {
                     const isCompleted = activityGroup.activities.some(a => a.isCompleted);
-                    detailText = `${activityGroup.count} ${t('statistics.activities')}${isCompleted ? ` • ${t('statistics.totalCompleted')}` : ''}`;
+                    detailText = `${activityGroup.count} ${t('statistics.activities')}${isCompleted ? ` • ✓` : ''}`;
                   } else if (category === 'education') {
                     detailText = `${activityGroup.count} ${t('statistics.activities')}`;
                   } else if (category === 'sport') {
