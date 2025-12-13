@@ -497,5 +497,49 @@ export const reportsStyles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 8,
   },
+  wrappedCardNumberTouchable: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  wrappedCardNumberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wrappedCardChevron: {
+    marginLeft: 8,
+    opacity: 0.8,
+  },
+  wrappedCardDetails: {
+    width: '100%',
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  wrappedCardDetailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  wrappedCardDetailItemLast: {
+    borderBottomWidth: 0,
+  },
+  wrappedCardDetailTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    flex: 1,
+  },
+  wrappedCardDetailValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#fff',
+    opacity: 0.9,
+    marginLeft: 12,
+  },
 });
 

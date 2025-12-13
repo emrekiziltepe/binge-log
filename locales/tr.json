@@ -130,6 +130,8 @@
     "booksCompleted": "{{count}} Kitap Bitirdin",
     "moviesWatched": "{{count}} Film İzledin",
     "seriesEpisodes": "{{count}} Dizi Bölümü İzledin",
+    "seriesWatched": "{{count}} Dizi İzledin",
+    "totalEpisodes": "{{count}} Toplam Bölüm",
     "gamesPlayed": "{{count}} Oyun Oynadın",
     "coursesLearned": "{{count}} Kurs/Eğitim Tamamladın",
     "hoursTrained": "{{count}} Saat Antrenman Yaptın",

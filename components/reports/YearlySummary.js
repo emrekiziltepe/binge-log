@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import SimpleBarChart from '../SimpleBarChart';
 import { reportsStyles } from '../../styles/reportsStyles';
@@ -14,6 +15,7 @@ export default function YearlySummary({
   colors 
 }) {
   const { t } = useTranslation();
+  const [expandedCategory, setExpandedCategory] = useState(null);
 
   if (Object.entries(categoryData).length === 0) {
     return (
@@ -153,6 +155,10 @@ export default function YearlySummary({
           mainLabel = t('statistics.booksCompleted', { count: completedBooks });
           wrappedMessage = totalPages > 0 ? `${totalPages} ${t('goals.pages')}` : '';
         } else if (category === 'series') {
+          // Count unique series (different series watched)
+          const uniqueSeriesCount = Object.keys(data.groupedActivities || {}).length;
+          
+          // Calculate total episodes watched
           let totalEpisodes = 0;
           Object.values(data.groupedActivities || {}).forEach(activityGroup => {
             activityGroup.details.forEach(detail => {
@@ -168,9 +174,10 @@ export default function YearlySummary({
               }
             });
           });
-          mainValue = totalEpisodes.toString();
-          mainLabel = t('statistics.seriesEpisodes', { count: totalEpisodes });
-          wrappedMessage = '';
+          
+          mainValue = uniqueSeriesCount.toString();
+          mainLabel = t('statistics.seriesWatched', { count: uniqueSeriesCount });
+          wrappedMessage = t('statistics.seriesEpisodes', { count: totalEpisodes });
         } else if (category === 'movie') {
           mainValue = data.count.toString();
           mainLabel = t('statistics.moviesWatched', { count: data.count });
@@ -212,18 +219,106 @@ export default function YearlySummary({
           wrappedMessage = '';
         }
 
+        const isExpanded = expandedCategory === category;
+        const groupedActivitiesList = Object.entries(data.groupedActivities || {})
+          .sort(([, a], [, b]) => b.count - a.count);
+
         return (
           <View key={category} style={[styles.wrappedCard, { backgroundColor: cardColor, opacity: 0.9 }]}>
             <Text style={styles.wrappedCardEmoji}>{data.categoryInfo?.emoji || '🏃'}</Text>
-            <Text style={styles.wrappedCardNumber}>{mainValue}</Text>
+            <TouchableOpacity
+              style={styles.wrappedCardNumberTouchable}
+              onPress={() => setExpandedCategory(isExpanded ? null : category)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.wrappedCardNumberContainer}>
+                <Text style={styles.wrappedCardNumber}>{mainValue}</Text>
+                <Ionicons 
+                  name={isExpanded ? "chevron-up" : "chevron-down"} 
+                  size={20} 
+                  color="rgba(255, 255, 255, 0.9)" 
+                  style={styles.wrappedCardChevron}
+                />
+              </View>
+            </TouchableOpacity>
             <Text style={styles.wrappedCardLabel}>{mainLabel}</Text>
             {wrappedMessage && (
               <Text style={styles.wrappedCardSubtext}>{wrappedMessage}</Text>
             )}
-            {topActivity && (
+            {topActivity && !isExpanded && (
               <Text style={styles.wrappedCardTopActivity}>
                 {t('statistics.topActivity')}: {topActivity}
               </Text>
+            )}
+            
+            {/* Expanded Details */}
+            {isExpanded && (
+              <View style={styles.wrappedCardDetails}>
+                {groupedActivitiesList.map(([activityKey, activityGroup], index) => {
+                  const isLast = index === groupedActivitiesList.length - 1;
+                  let detailText = '';
+                  
+                  if (category === 'book') {
+                    const totalPages = activityGroup.details.reduce((sum, detail) => {
+                      return sum + (parseInt(detail) || 0);
+                    }, 0);
+                    const isCompleted = activityGroup.activities.some(a => a.isCompleted);
+                    detailText = totalPages > 0 
+                      ? `${totalPages} ${t('goals.pages')}${isCompleted ? ` • ${t('statistics.totalCompleted')}` : ''}`
+                      : (isCompleted ? t('statistics.totalCompleted') : '');
+                  } else if (category === 'series') {
+                    let totalEpisodes = 0;
+                    activityGroup.details.forEach(detail => {
+                      if (detail) {
+                        const parts = detail.split(';');
+                        parts.forEach(part => {
+                          const episodeParts = part.split(',').slice(1);
+                          episodeParts.forEach(ep => {
+                            const episodes = ep.trim().split(',').length;
+                            totalEpisodes += episodes;
+                          });
+                        });
+                      }
+                    });
+                    detailText = totalEpisodes > 0 ? `${totalEpisodes} ${t('statistics.activities')}` : '';
+                  } else if (category === 'movie') {
+                    detailText = `${activityGroup.count} ${t('statistics.activities')}`;
+                  } else if (category === 'game') {
+                    const isCompleted = activityGroup.activities.some(a => a.isCompleted);
+                    detailText = `${activityGroup.count} ${t('statistics.activities')}${isCompleted ? ` • ${t('statistics.totalCompleted')}` : ''}`;
+                  } else if (category === 'education') {
+                    detailText = `${activityGroup.count} ${t('statistics.activities')}`;
+                  } else if (category === 'sport') {
+                    let totalHours = 0;
+                    activityGroup.details.forEach(detail => {
+                      if (detail) {
+                        const detailLower = detail.toLowerCase().trim();
+                        if (detailLower.includes('saat') || detailLower.includes('hour')) {
+                          const match = detail.match(/(\d+\.?\d*)/);
+                          if (match) totalHours += parseFloat(match[1]);
+                        } else if (detailLower.includes(':')) {
+                          const parts = detail.split(':');
+                          if (parts.length === 2) {
+                            totalHours += parseFloat(parts[0]) + (parseFloat(parts[1]) / 60);
+                          }
+                        }
+                      }
+                    });
+                    detailText = totalHours > 0 ? `${totalHours.toFixed(1)} ${t('goals.hours')}` : '';
+                  }
+
+                  return (
+                    <View key={activityKey} style={[styles.wrappedCardDetailItem, isLast && styles.wrappedCardDetailItemLast]}>
+                      <Text style={styles.wrappedCardDetailTitle} numberOfLines={1}>
+                        {activityGroup.name || activityKey}
+                      </Text>
+                      {detailText ? (
+                        <Text style={styles.wrappedCardDetailValue}>{detailText}</Text>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
             )}
             
             {/* Monthly Breakdown Chart */}

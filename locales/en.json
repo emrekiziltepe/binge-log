@@ -130,6 +130,8 @@
     "booksCompleted": "You Completed {{count}} Books",
     "moviesWatched": "You Watched {{count}} Movies",
     "seriesEpisodes": "You Watched {{count}} Series Episodes",
+    "seriesWatched": "You Watched {{count}} Series",
+    "totalEpisodes": "{{count}} Total Episodes",
     "gamesPlayed": "You Played {{count}} Games",
     "coursesLearned": "You Completed {{count}} Courses",
     "hoursTrained": "You Trained {{count}} Hours",
