@@ -207,6 +207,7 @@ export default function YearlySummary({
           });
           mainValue = uniqueGamesCount.toString();
           mainLabel = t('statistics.gamesPlayedLabel');
+          wrappedMessage = completedGames > 0 ? t('statistics.gamesCompleted', { count: completedGames }) : '';
         } else if (category === 'education') {
           mainValue = data.count.toString();
           mainLabel = t('statistics.coursesLearnedLabel');

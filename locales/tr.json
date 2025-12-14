@@ -141,6 +141,7 @@
     "totalEpisodes": "{{count}} Toplam Bölüm",
     "gamesPlayed": "{{count}} Oyun Oynadın",
     "gamesPlayedLabel": "Oyun Oynadın",
+    "gamesCompleted": "{{count}} Oyun Bitirdin",
     "coursesLearned": "{{count}} Kurs/Eğitim Tamamladın",
     "coursesLearnedLabel": "Kurs/Eğitim Tamamladın",
     "hoursTrained": "{{count}} Saat Antrenman Yaptın",

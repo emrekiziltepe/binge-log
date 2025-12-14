@@ -41,7 +41,9 @@ const SimpleBarChart = ({ data, labels, maxValue, height = 150 }) => {
                   {/* Tooltip/Popup - positioned outside barWrapper */}
                   {isSelected && (
                     <View style={[styles.tooltip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <Text style={[styles.tooltipText, { color: colors.text }]}>{item.value}</Text>
+                      <Text style={[styles.tooltipText, { color: colors.text }]} numberOfLines={1}>
+                        {item.value}
+                      </Text>
                       <View style={[styles.tooltipArrow, { borderTopColor: colors.surface }]} />
                     </View>
                   )}
@@ -145,10 +147,10 @@ const styles = StyleSheet.create({
   },
   tooltip: {
     position: 'absolute',
-    top: 0,
+    top: -40,
     alignSelf: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 6,
     borderWidth: 1,
     shadowColor: '#000',
@@ -157,12 +159,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
     zIndex: 100,
-    minWidth: 30,
+    minWidth: 50,
+    maxWidth: 80,
   },
   tooltipText: {
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
+    width: '100%',
   },
   tooltipArrow: {
     position: 'absolute',

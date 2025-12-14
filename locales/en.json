@@ -141,6 +141,7 @@
     "totalEpisodes": "{{count}} Total Episodes",
     "gamesPlayed": "You Played {{count}} Games",
     "gamesPlayedLabel": "Games Played",
+    "gamesCompleted": "You Completed {{count}} Games",
     "coursesLearned": "You Completed {{count}} Courses",
     "coursesLearnedLabel": "Courses Completed",
     "hoursTrained": "You Trained {{count}} Hours",
