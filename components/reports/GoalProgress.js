@@ -21,8 +21,12 @@ export default function GoalProgress({
   
   // Check if there are any goals for this view mode
   const periodGoals = goals[viewMode] || {};
-  const hasGoals = Object.values(periodGoals).some(goal => 
-    goal !== null && goal !== undefined && goal !== '' && goal !== 0
+  // Check if there are any date entries with goals
+  const hasGoals = Object.values(periodGoals).some(dateGoals => 
+    dateGoals && typeof dateGoals === 'object' && 
+    Object.values(dateGoals).some(goal => 
+      goal !== null && goal !== undefined && goal !== '' && goal !== 0
+    )
   );
   
   if (!hasGoals) {

@@ -15,6 +15,7 @@ import { ThemeContext } from '../contexts/ThemeContext';
 import SimpleBarChart from '../components/SimpleBarChart';
 import { useGoals } from '../hooks/useGoals';
 import { useActivities } from '../hooks/useActivities';
+import goalService from '../services/goalService';
 import { formatActivityDetail } from '../utils/reportsUtils';
 import {
   getWeekStart,
@@ -120,7 +121,9 @@ export default function ReportsScreen({ navigation }) {
 
   // Calculate goal progress for a category
   const calculateGoalProgress = useCallback((category, period) => {
-    const goal = goals[period]?.[category];
+    // Get the appropriate date for the period (selected week/month)
+    const date = period === 'weekly' ? currentWeek : currentMonth;
+    const goal = goalService.getCategoryGoal(goals, period, category, date);
     // Check if goal is not null, undefined or 0 (0 can be a valid value)
     if (goal === null || goal === undefined) return null;
 
@@ -195,7 +198,7 @@ export default function ReportsScreen({ navigation }) {
     const completed = current >= goal;
     
     return { current, goal, progress, completed };
-  }, [goals, weeklyCategoryData, monthlyCategoryData]);
+  }, [goals, weeklyCategoryData, monthlyCategoryData, currentWeek, currentMonth]);
 
   // Week navigation
   const navigateWeek = (direction) => {

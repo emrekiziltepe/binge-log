@@ -31,6 +31,7 @@ import { ThemeContext } from './contexts/ThemeContext';
 // Import goal service
 import goalService from './services/goalService';
 import { useGoals } from './hooks/useGoals';
+import { getWeekStart, formatLocalDate } from './utils/dateUtils';
 
 const Tab = createBottomTabNavigator();
 
@@ -179,8 +180,19 @@ export default function App() {
               color: colors.headerText,
             },
             headerLeft: () => {
-              const hasAnyGoal = goals.weekly && Object.values(goals.weekly).some(v => v !== null && v !== undefined && v !== '') ||
-                goals.monthly && Object.values(goals.monthly).some(v => v !== null && v !== undefined && v !== '');
+              // Check if there's a goal for current week or month
+              const now = new Date();
+              const currentWeekKey = goalService.getWeekKey(now);
+              const currentMonthKey = goalService.getMonthKey(now);
+              
+              const hasWeeklyGoal = goals.weekly && goals.weekly[currentWeekKey] && 
+                Object.values(goals.weekly[currentWeekKey]).some(v => v !== null && v !== undefined && v !== '' && v !== 0);
+              
+              const hasMonthlyGoal = goals.monthly && goals.monthly[currentMonthKey] && 
+                Object.values(goals.monthly[currentMonthKey]).some(v => v !== null && v !== undefined && v !== '' && v !== 0);
+              
+              const hasAnyGoal = hasWeeklyGoal || hasMonthlyGoal;
+              
               return (
                 <View style={{ width: 48, alignItems: 'center', paddingLeft: 16 }}>
                   <TouchableOpacity

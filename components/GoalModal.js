@@ -13,24 +13,13 @@ const GoalModal = ({ visible, onClose }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('weekly'); // 'weekly' or 'monthly'
   const [selectedCategory, setSelectedCategory] = useState('book'); // Selected category from dropdown
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [goals, setGoals] = useState({
-    weekly: {
-      book: null,
-      movie: null,
-      series: null,
-      game: null,
-      education: null,
-      sport: null,
-    },
-    monthly: {
-      book: null,
-      movie: null,
-      series: null,
-      game: null,
-      education: null,
-      sport: null,
-    }
-  });
+  const [allGoals, setAllGoals] = useState({ weekly: {}, monthly: {} });
+  const [currentGoal, setCurrentGoal] = useState(null);
+  
+  // Get current date for the selected period
+  const getCurrentDate = () => {
+    return new Date(); // Always use current date
+  };
 
   useEffect(() => {
     if (visible) {
@@ -38,59 +27,67 @@ const GoalModal = ({ visible, onClose }) => {
     }
   }, [visible]);
 
+  // Update current goal when period or category changes
+  useEffect(() => {
+    if (visible) {
+      const currentDate = getCurrentDate();
+      const dateKey = selectedPeriod === 'weekly' 
+        ? goalService.getWeekKey(currentDate)
+        : goalService.getMonthKey(currentDate);
+      
+      const currentPeriodGoals = allGoals[selectedPeriod] || {};
+      const dateGoals = currentPeriodGoals[dateKey] || {};
+      setCurrentGoal(dateGoals[selectedCategory] ?? null);
+    }
+  }, [selectedPeriod, selectedCategory, visible, allGoals]);
+
   const loadGoals = async () => {
     const loadedGoals = await goalService.getGoals();
-    setGoals(loadedGoals);
+    setAllGoals(loadedGoals);
+    
+    // Get current date key
+    const currentDate = getCurrentDate();
+    const dateKey = selectedPeriod === 'weekly' 
+      ? goalService.getWeekKey(currentDate)
+      : goalService.getMonthKey(currentDate);
+    
+    // Get current goal for selected period and date
+    const currentPeriodGoals = loadedGoals[selectedPeriod] || {};
+    const dateGoals = currentPeriodGoals[dateKey] || {};
+    setCurrentGoal(dateGoals[selectedCategory] ?? null);
   };
 
   const handleSave = async () => {
     try {
-      // Save all goals
-      for (const period of ['weekly', 'monthly']) {
-        for (const category of Object.keys(CATEGORIES)) {
-          if (goals[period] && goals[period][category] !== null && goals[period][category] !== undefined && goals[period][category] !== '') {
-            await goalService.setCategoryGoal(period, category, goals[period][category]);
-          } else {
-            await goalService.deleteCategoryGoal(period, category);
-          }
-        }
+      const currentDate = getCurrentDate();
+      const value = currentGoal === null || currentGoal === '' ? null : parseFloat(currentGoal);
+      
+      if (value === null || value === '' || value === undefined) {
+        await goalService.deleteCategoryGoal(selectedPeriod, selectedCategory, currentDate);
+      } else {
+        await goalService.setCategoryGoal(selectedPeriod, selectedCategory, value, currentDate);
       }
+      
+      // Reload goals to update state
+      await loadGoals();
       onClose();
     } catch (error) {
       Alert.alert(t('errors.error'), error.message);
     }
   };
 
-  const updateGoal = (period, category, value) => {
-    setGoals(prev => ({
-      ...prev,
-      [period]: {
-        ...prev[period],
-        [category]: value === '' ? null : (value ? parseFloat(value) : null)
-      }
-    }));
+  const updateGoal = (value) => {
+    setCurrentGoal(value === '' ? null : (value ? value : null));
   };
 
-  const deleteGoal = async (period, category) => {
-    await goalService.deleteCategoryGoal(period, category);
-    setGoals(prev => ({
-      ...prev,
-      [period]: {
-        ...prev[period],
-        [category]: null
-      }
-    }));
-  };
-
-  const hasAnyGoal = () => {
-    for (const period of ['weekly', 'monthly']) {
-      for (const category of Object.keys(CATEGORIES)) {
-        if (goals[period] && goals[period][category] !== null && goals[period][category] !== undefined && goals[period][category] !== '') {
-          return true;
-        }
-      }
+  const deleteGoal = async () => {
+    try {
+      const currentDate = getCurrentDate();
+      await goalService.deleteCategoryGoal(selectedPeriod, selectedCategory, currentDate);
+      await loadGoals();
+    } catch (error) {
+      Alert.alert(t('errors.error'), error.message);
     }
-    return false;
   };
 
   return (
@@ -202,10 +199,10 @@ const GoalModal = ({ visible, onClose }) => {
                 <Text style={[styles.categoryLabel, { color: colors.text }]}>
                   {CATEGORIES[selectedCategory].emoji} {t(CATEGORIES[selectedCategory].nameKey)}
                 </Text>
-                {goals[selectedPeriod]?.[selectedCategory] && (
+                {currentGoal !== null && currentGoal !== undefined && currentGoal !== '' && (
                   <TouchableOpacity 
                     style={[styles.deleteGoalButton, { backgroundColor: colors.error }]}
-                    onPress={() => deleteGoal(selectedPeriod, selectedCategory)}
+                    onPress={deleteGoal}
                   >
                     <Text style={styles.deleteGoalText}>{t('common.delete')}</Text>
                   </TouchableOpacity>
@@ -220,10 +217,10 @@ const GoalModal = ({ visible, onClose }) => {
                 placeholder={t('goals.enterValue', { unit: t(CATEGORIES[selectedCategory].unitKey) })}
                 placeholderTextColor={colors.placeholder}
                 keyboardType={selectedCategory === 'sport' ? 'decimal-pad' : 'numeric'}
-                value={goals[selectedPeriod]?.[selectedCategory] ? goals[selectedPeriod][selectedCategory].toString() : ''}
+                value={currentGoal !== null && currentGoal !== undefined ? currentGoal.toString() : ''}
                 onChangeText={(text) => {
                   const numValue = text.replace(/[^0-9.,]/g, '').replace(',', '.');
-                  updateGoal(selectedPeriod, selectedCategory, numValue);
+                  updateGoal(numValue);
                 }}
               />
               <Text style={[styles.unitText, { color: colors.textSecondary }]}>
