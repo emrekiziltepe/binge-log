@@ -193,7 +193,8 @@ export default function YearlySummary({
           wrappedMessage = t('statistics.seriesEpisodes', { count: totalEpisodes });
           wrappedMessageBottom = completedSeries > 0 ? t('statistics.seriesCompleted', { count: completedSeries }) : '';
         } else if (category === 'movie') {
-          mainValue = data.count.toString();
+          const uniqueMoviesCount = Object.keys(data.groupedActivities || {}).length;
+          mainValue = uniqueMoviesCount.toString();
           mainLabel = t('statistics.moviesWatchedLabel');
           wrappedMessage = '';
         } else if (category === 'game') {
