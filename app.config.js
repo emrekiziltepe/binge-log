@@ -41,7 +41,7 @@ const getConfig = () => {
     expo: {
       name: "Binge Log",
       slug: "binge-log",
-      version: "1.1.1",
+      version: "1.1.2",
       orientation: "portrait",
       icon: "./assets/icon.png",
       userInterfaceStyle: "light",
@@ -55,7 +55,7 @@ const getConfig = () => {
       ios: {
         supportsTablet: true,
         bundleIdentifier: "com.emek02.bingelog",
-        buildNumber: "3",
+        buildNumber: "1",
         infoPlist: {
           ITSAppUsesNonExemptEncryption: false
         }

@@ -64,7 +64,7 @@ const GoalModal = ({ visible, onClose }) => {
       
       if (value === null || value === '' || value === undefined) {
         await goalService.deleteCategoryGoal(selectedPeriod, selectedCategory, currentDate);
-      } else {
+          } else {
         await goalService.setCategoryGoal(selectedPeriod, selectedCategory, value, currentDate);
       }
       

@@ -25,7 +25,7 @@ export default function GoalProgress({
   const hasGoals = Object.values(periodGoals).some(dateGoals => 
     dateGoals && typeof dateGoals === 'object' && 
     Object.values(dateGoals).some(goal => 
-      goal !== null && goal !== undefined && goal !== '' && goal !== 0
+    goal !== null && goal !== undefined && goal !== '' && goal !== 0
     )
   );
   

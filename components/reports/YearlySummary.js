@@ -237,7 +237,21 @@ export default function YearlySummary({
 
         const isExpanded = expandedCategory === category;
         const groupedActivitiesList = Object.entries(data.groupedActivities || {})
-          .sort(([, a], [, b]) => b.count - a.count);
+          .sort(([, a], [, b]) => {
+            // Get earliest timestamp from each activity group
+            const getEarliestTimestamp = (activityGroup) => {
+              if (!activityGroup.activities || activityGroup.activities.length === 0) {
+                return 0;
+              }
+              return Math.min(...activityGroup.activities.map(act => new Date(act.timestamp).getTime()));
+            };
+            
+            const timestampA = getEarliestTimestamp(a);
+            const timestampB = getEarliestTimestamp(b);
+            
+            // Sort from oldest (smallest timestamp) to newest (largest timestamp)
+            return timestampA - timestampB;
+          });
 
         return (
           <View key={category} style={[styles.wrappedCard, { backgroundColor: cardColor, opacity: 0.9 }]}>
@@ -281,7 +295,7 @@ export default function YearlySummary({
                 )}
               </>
             )}
-            {topActivity && !isExpanded && (
+            {topActivity && !isExpanded && category !== 'movie' && (
               <Text style={styles.wrappedCardTopActivity}>
                 {t('statistics.topActivity')}: {topActivity}
               </Text>
@@ -294,14 +308,27 @@ export default function YearlySummary({
                   const isLast = index === groupedActivitiesList.length - 1;
                   let detailText = '';
                   
+                  // Get rating from activities (use the most recent rating if multiple)
+                  // Only show rating if completed
+                  const isCompleted = activityGroup.activities.some(a => a.isCompleted);
+                  let rating = null;
+                  if (isCompleted && activityGroup.activities && activityGroup.activities.length > 0) {
+                    // Sort by timestamp to get most recent
+                    const sortedActivities = [...activityGroup.activities].sort((a, b) => 
+                      new Date(b.timestamp) - new Date(a.timestamp)
+                    );
+                    // Get rating from most recent activity
+                    rating = sortedActivities[0].rating;
+                  }
+                  const ratingText = rating && rating > 0 ? ` • ${rating} ⭐` : '';
+                  
                   if (category === 'book') {
                     const totalPages = activityGroup.details.reduce((sum, detail) => {
                       return sum + (parseInt(detail) || 0);
                     }, 0);
-                    const isCompleted = activityGroup.activities.some(a => a.isCompleted);
                     detailText = totalPages > 0 
-                      ? `${totalPages} ${t('goals.pages')}${isCompleted ? ` • ✓` : ''}`
-                      : (isCompleted ? '• ✓' : '');
+                      ? `${totalPages} ${t('goals.pages')}${ratingText}`
+                      : ratingText;
                   } else if (category === 'series') {
                     let totalEpisodes = 0;
                     activityGroup.details.forEach(detail => {
@@ -316,14 +343,23 @@ export default function YearlySummary({
                         });
                       }
                     });
-                    detailText = totalEpisodes > 0 ? `${totalEpisodes} ${t('statistics.activities')}` : '';
+                    detailText = totalEpisodes > 0 ? `${totalEpisodes} ${t('goals.episodes')}${ratingText}` : ratingText;
                   } else if (category === 'movie') {
-                    detailText = `${activityGroup.count} ${t('statistics.activities')}`;
+                    // Show rating with star emoji (e.g., "8 ⭐") - only if completed
+                    detailText = ratingText ? ratingText.replace(' • ', '') : '';
                   } else if (category === 'game') {
-                    const isCompleted = activityGroup.activities.some(a => a.isCompleted);
-                    detailText = `${activityGroup.count} ${t('statistics.activities')}${isCompleted ? ` • ✓` : ''}`;
+                    // Count unique days played
+                    const uniqueDays = new Set();
+                    if (activityGroup.activities && activityGroup.activities.length > 0) {
+                      activityGroup.activities.forEach(activity => {
+                        const activityDate = activity.date || formatLocalDate(new Date(activity.timestamp));
+                        uniqueDays.add(activityDate);
+                      });
+                    }
+                    const daysCount = uniqueDays.size;
+                    detailText = daysCount > 0 ? `${daysCount} ${t('statistics.days')}${ratingText}` : ratingText;
                   } else if (category === 'education') {
-                    detailText = `${activityGroup.count} ${t('statistics.activities')}`;
+                    detailText = `${activityGroup.count} ${t('statistics.activities')}${ratingText}`;
                   } else if (category === 'sport') {
                     let totalHours = 0;
                     activityGroup.details.forEach(detail => {
