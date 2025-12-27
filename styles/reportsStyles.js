@@ -529,13 +529,13 @@ export const reportsStyles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   wrappedCardDetailTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
     flex: 1,
   },
   wrappedCardDetailValue: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '500',
     color: '#fff',
     opacity: 0.9,

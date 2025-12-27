@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import SimpleBarChart from '../SimpleBarChart';
 import { reportsStyles } from '../../styles/reportsStyles';
 import { formatLocalDate } from '../../utils/dateUtils';
@@ -326,8 +327,10 @@ export default function YearlySummary({
                     const totalPages = activityGroup.details.reduce((sum, detail) => {
                       return sum + (parseInt(detail) || 0);
                     }, 0);
+                    // Use abbreviation: "S" for Turkish, "P" for English (uppercase)
+                    const pagesAbbr = i18n.language === 'tr' ? 'S' : 'P';
                     detailText = totalPages > 0 
-                      ? `${totalPages} ${t('goals.pages')}${ratingText}`
+                      ? `${totalPages} ${pagesAbbr}${ratingText}`
                       : ratingText;
                   } else if (category === 'series') {
                     let totalEpisodes = 0;
@@ -343,7 +346,9 @@ export default function YearlySummary({
                         });
                       }
                     });
-                    detailText = totalEpisodes > 0 ? `${totalEpisodes} ${t('goals.episodes')}${ratingText}` : ratingText;
+                    // Use abbreviation: "B" for Turkish (bölüm), "E" for English (episodes) (uppercase)
+                    const episodesAbbr = i18n.language === 'tr' ? 'B' : 'E';
+                    detailText = totalEpisodes > 0 ? `${totalEpisodes} ${episodesAbbr}${ratingText}` : ratingText;
                   } else if (category === 'movie') {
                     // Show rating with star emoji (e.g., "8 ⭐") - only if completed
                     detailText = ratingText ? ratingText.replace(' • ', '') : '';
