@@ -334,11 +334,15 @@ export default function YearlySummary({
                       : ratingText;
                   } else if (category === 'series') {
                     let totalEpisodes = 0;
+                    const uniqueSeasons = new Set();
                     activityGroup.details.forEach(detail => {
                       if (detail) {
                         const parts = detail.split(';');
                         parts.forEach(part => {
-                          const episodeParts = part.split(',').slice(1);
+                          const [season, ...episodeParts] = part.split(',');
+                          if (season) {
+                            uniqueSeasons.add(season.trim());
+                          }
                           episodeParts.forEach(ep => {
                             const episodes = ep.trim().split(',').length;
                             totalEpisodes += episodes;
@@ -346,9 +350,18 @@ export default function YearlySummary({
                         });
                       }
                     });
+                    const totalSeasons = uniqueSeasons.size;
                     // Use abbreviation: "B" for Turkish (bölüm), "E" for English (episodes) (uppercase)
                     const episodesAbbr = i18n.language === 'tr' ? 'B' : 'E';
-                    detailText = totalEpisodes > 0 ? `${totalEpisodes} ${episodesAbbr}${ratingText}` : ratingText;
+                    if (totalSeasons > 0 && totalEpisodes > 0) {
+                      detailText = `${totalSeasons} S ${totalEpisodes} ${episodesAbbr}${ratingText}`;
+                    } else if (totalEpisodes > 0) {
+                      detailText = `${totalEpisodes} ${episodesAbbr}${ratingText}`;
+                    } else if (totalSeasons > 0) {
+                      detailText = `${totalSeasons} S${ratingText}`;
+                    } else {
+                      detailText = ratingText;
+                    }
                   } else if (category === 'movie') {
                     // Show rating with star emoji (e.g., "8 ⭐") - only if completed
                     detailText = ratingText ? ratingText.replace(' • ', '') : '';
