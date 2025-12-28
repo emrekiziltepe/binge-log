@@ -239,19 +239,19 @@ export default function YearlySummary({
         const isExpanded = expandedCategory === category;
         const groupedActivitiesList = Object.entries(data.groupedActivities || {})
           .sort(([, a], [, b]) => {
-            // Get earliest timestamp from each activity group
-            const getEarliestTimestamp = (activityGroup) => {
+            // Get latest timestamp from each activity group
+            const getLatestTimestamp = (activityGroup) => {
               if (!activityGroup.activities || activityGroup.activities.length === 0) {
                 return 0;
               }
-              return Math.min(...activityGroup.activities.map(act => new Date(act.timestamp).getTime()));
+              return Math.max(...activityGroup.activities.map(act => new Date(act.timestamp).getTime()));
             };
             
-            const timestampA = getEarliestTimestamp(a);
-            const timestampB = getEarliestTimestamp(b);
+            const timestampA = getLatestTimestamp(a);
+            const timestampB = getLatestTimestamp(b);
             
-            // Sort from oldest (smallest timestamp) to newest (largest timestamp)
-            return timestampA - timestampB;
+            // Sort from newest (largest timestamp) to oldest (smallest timestamp)
+            return timestampB - timestampA;
           });
 
         return (
