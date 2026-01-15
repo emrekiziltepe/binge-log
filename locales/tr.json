@@ -159,7 +159,8 @@
     "days": "gün",
     "weeklyViewDescription": "Haftalık görünümde aktivitelerinizi görebilirsiniz",
     "activities": "aktivite",
-    "weekNumber": "{{number}}. Hafta"
+    "weekNumber": "{{number}}. Hafta",
+    "trendChart": "Trend Grafiği"
   },
   "datePicker": {
     "selectMonth": "Ay Seç",

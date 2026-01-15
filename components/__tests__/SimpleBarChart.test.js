@@ -8,6 +8,18 @@ jest.mock('@expo/vector-icons', () => ({
     Ionicons: 'Ionicons',
 }));
 
+// Mock react-i18next
+jest.mock('react-i18next', () => ({
+    useTranslation: () => ({
+        t: (key) => {
+            const translations = {
+                'statistics.trendChart': 'Trend Chart'
+            };
+            return translations[key] || key;
+        }
+    })
+}));
+
 describe('SimpleBarChart', () => {
     const mockColors = {
         card: '#ffffff',
@@ -36,7 +48,7 @@ describe('SimpleBarChart', () => {
         const { getByText } = renderWithTheme(
             <SimpleBarChart data={mockData} labels={mockLabels} />
         );
-        expect(getByText('📊 Trend Grafiği')).toBeTruthy();
+        expect(getByText('📊 Trend Chart')).toBeTruthy();
     });
 
     it('toggles expansion on press', () => {
@@ -49,7 +61,7 @@ describe('SimpleBarChart', () => {
         expect(queryByText('A')).toBeNull();
 
         // Press header to expand
-        fireEvent.press(getByText('📊 Trend Grafiği'));
+        fireEvent.press(getByText('📊 Trend Chart'));
 
         // Now visible
         expect(getByText('A')).toBeTruthy();
@@ -62,7 +74,7 @@ describe('SimpleBarChart', () => {
             <SimpleBarChart data={mockData} labels={mockLabels} maxValue={100} />
         );
 
-        fireEvent.press(getByText('📊 Trend Grafiği'));
+        fireEvent.press(getByText('📊 Trend Chart'));
 
         expect(getByText('100')).toBeTruthy();
     });

@@ -1,10 +1,12 @@
 import React, { useContext, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
 const SimpleBarChart = ({ data, labels, maxValue, height = 150 }) => {
   const { colors } = useContext(ThemeContext);
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [selectedBar, setSelectedBar] = useState(null);
 
@@ -22,7 +24,7 @@ const SimpleBarChart = ({ data, labels, maxValue, height = 150 }) => {
         onPress={() => setExpanded(!expanded)}
         activeOpacity={0.7}
       >
-        <Text style={[styles.title, { color: colors.text }]}>📊 Trend Grafiği</Text>
+        <Text style={[styles.title, { color: colors.text }]}>📊 {t('statistics.trendChart')}</Text>
         <Ionicons
           name={expanded ? 'chevron-up' : 'chevron-down'}
           size={20}

@@ -159,7 +159,8 @@
     "days": "days",
     "weeklyViewDescription": "You can see your activities in weekly view",
     "activities": "activities",
-    "weekNumber": "Week {{number}}"
+    "weekNumber": "Week {{number}}",
+    "trendChart": "Trend Chart"
   },
   "datePicker": {
     "selectMonth": "Select Month",
