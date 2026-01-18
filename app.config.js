@@ -55,7 +55,7 @@ const getConfig = () => {
       ios: {
         supportsTablet: false,
         bundleIdentifier: "com.emek02.bingelog",
-        buildNumber: "1",
+        buildNumber: "2",
         infoPlist: {
           ITSAppUsesNonExemptEncryption: false
         }
