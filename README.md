@@ -17,7 +17,6 @@ For support, questions, or feedback, please contact us at: **emrekiziltepe2@gmai
 - ✅ **Completion Status** - Mark activities as completed
 - 📅 **Date Navigation** - Horizontal scrollable date picker with swipe navigation
 - 🔄 **Quick Add** - Quick access to recent activities
-- 🗑️ **Swipe to Delete** - Swipe left on activities to delete
 - 📋 **Recent Activities** - Quick access to your most recent activities
 
 ### Activity Categories
@@ -31,7 +30,7 @@ For support, questions, or feedback, please contact us at: **emrekiziltepe2@gmai
 ### User Features
 - 🌓 **Dark/Light Theme** - Automatic theme switching
 - 🌍 **Multi-language Support** - English and Turkish
-- 🔒 **Authentication** - Email/Password, Google OAuth, Apple Sign-in
+- 🔒 **Authentication** - Email/Password, Apple Sign-in
 - ☁️ **Cloud Sync** - Firebase Firestore synchronization
 - 📴 **Offline Support** - Automatic sync when connection is restored
 - 🔄 **Auto Sync** - Background synchronization with offline queue
