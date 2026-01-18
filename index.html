@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binge Log - Activity Tracking App</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; font-size: 2.5em; margin-bottom: 10px; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #34495e; font-size: 1.8em; margin-top: 40px; margin-bottom: 20px; border-left: 4px solid #3498db; padding-left: 15px; }
+        h3 { color: #555; font-size: 1.4em; margin-top: 30px; margin-bottom: 15px; }
+        p { margin-bottom: 15px; color: #666; font-size: 1.05em; }
+        ul { margin-left: 30px; margin-bottom: 20px; }
+        li { margin-bottom: 8px; color: #555; line-height: 1.8; }
+        .support { background: #e8f4f8; padding: 20px; border-radius: 8px; border-left: 4px solid #3498db; margin: 30px 0; }
+        .support strong { color: #2c3e50; }
+        .feature-list { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #e74c3c; }
+        .emoji { font-size: 1.2em; }
+        @media (max-width: 768px) { .container { padding: 20px; } h1 { font-size: 2em; } h2 { font-size: 1.5em; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Binge Log</h1>
+        <p style="font-size: 1.1em; color: #555; margin-bottom: 30px;">Daily activity tracking app developed with React Native and Expo. Track your books, series, movies, games, education, and sports activities with a modern, intuitive interface.</p>
+        <div class="support">
+            <h2 style="margin-top: 0; border: none; padding: 0;">Support</h2>
+            <p style="margin: 0;">For support, questions, or feedback, please contact us at: <strong>emrekiziltepe2@gmail.com</strong></p>
+        </div>
+        <h2>Features</h2>
+        <div class="feature-list">
+            <h3>Core Features</h3>
+            <ul>
+                <li><span class="emoji">📱</span> <strong>Daily Activity Logging</strong> - Track activities across 6 categories</li>
+                <li><span class="emoji">📊</span> <strong>Detailed Statistics</strong> - Weekly, monthly, and yearly reports</li>
+                <li><span class="emoji">🎯</span> <strong>Goal Setting</strong> - Set weekly and monthly goals for each category</li>
+                <li><span class="emoji">🔥</span> <strong>Streak Tracking</strong> - Track your daily activity streaks</li>
+                <li><span class="emoji">⭐</span> <strong>Rating System</strong> - Rate activities from 1-10</li>
+                <li><span class="emoji">✅</span> <strong>Completion Status</strong> - Mark activities as completed</li>
+                <li><span class="emoji">📅</span> <strong>Date Navigation</strong> - Horizontal scrollable date picker with swipe navigation</li>
+                <li><span class="emoji">🔄</span> <strong>Quick Add</strong> - Quick access to recent activities</li>
+                <li><span class="emoji">🗑️</span> <strong>Swipe to Delete</strong> - Swipe left on activities to delete</li>
+                <li><span class="emoji">📋</span> <strong>Recent Activities</strong> - Quick access to your most recent activities</li>
+            </ul>
+            <h3>Activity Categories</h3>
+            <ul>
+                <li><span class="emoji">📚</span> <strong>Books</strong> - Track pages read</li>
+                <li><span class="emoji">📺</span> <strong>Series</strong> - Track seasons and episodes (supports multiple episodes per season)</li>
+                <li><span class="emoji">🎬</span> <strong>Movies</strong> - Track with optional details (IMDb rating, comments, etc.)</li>
+                <li><span class="emoji">🎮</span> <strong>Games</strong> - Track with optional details (platform, duration, etc.)</li>
+                <li><span class="emoji">🎓</span> <strong>Education</strong> - Track with optional details (topic, source, etc.)</li>
+                <li><span class="emoji">🏃</span> <strong>Sport</strong> - Track duration (hours and minutes)</li>
+            </ul>
+            <h3>User Features</h3>
+            <ul>
+                <li><span class="emoji">🌓</span> <strong>Dark/Light Theme</strong> - Automatic theme switching</li>
+                <li><span class="emoji">🌍</span> <strong>Multi-language Support</strong> - English and Turkish</li>
+                <li><span class="emoji">🔒</span> <strong>Authentication</strong> - Email/Password, Google OAuth, Apple Sign-in</li>
+                <li><span class="emoji">☁️</span> <strong>Cloud Sync</strong> - Firebase Firestore synchronization</li>
+                <li><span class="emoji">📴</span> <strong>Offline Support</strong> - Automatic sync when connection is restored</li>
+                <li><span class="emoji">🔄</span> <strong>Auto Sync</strong> - Background synchronization with offline queue</li>
+                <li><span class="emoji">👤</span> <strong>User Profiles</strong> - Separate data per user account</li>
+            </ul>
+        </div>
+        <h2>Activity Categories & Details</h2>
+        <div class="feature-list">
+            <h3><span class="emoji">📚</span> Books</h3>
+            <ul><li><strong>Required Detail:</strong> Page count</li><li><strong>Example:</strong> "150" (pages read)</li></ul>
+            <h3><span class="emoji">📺</span> Series</h3>
+            <ul><li><strong>Required Detail:</strong> Season and Episode(s)</li><li><strong>Format:</strong> <code>Season,Episode1,Episode2,...</code> or multiple seasons: <code>Season1,Ep1,Ep2;Season2,Ep1</code></li><li><strong>Example:</strong> "3,5" (Season 3, Episode 5) or "3,5,6,7" (Season 3, Episodes 5, 6, 7)</li></ul>
+            <h3><span class="emoji">🎬</span> Movies</h3>
+            <ul><li><strong>Optional Detail:</strong> IMDb rating, comments, etc.</li><li><strong>Example:</strong> "IMDb: 8.5, Great cinematography"</li></ul>
+            <h3><span class="emoji">🎮</span> Games</h3>
+            <ul><li><strong>Optional Detail:</strong> Platform, duration, etc.</li><li><strong>Example:</strong> "PC, 2 hours"</li></ul>
+            <h3><span class="emoji">🎓</span> Education</h3>
+            <ul><li><strong>Optional Detail:</strong> Topic, source, etc.</li><li><strong>Example:</strong> "React Native, YouTube tutorial"</li></ul>
+            <h3><span class="emoji">🏃</span> Sport</h3>
+            <ul><li><strong>Optional Detail:</strong> Duration (hours and minutes)</li><li><strong>Example:</strong> "1 hour 30 minutes"</li></ul>
+        </div>
+        <h2>UI Features</h2>
+        <div class="feature-list">
+            <h3>Daily Flow Screen</h3>
+            <ul>
+                <li><strong>Horizontal Date Picker</strong> - Scrollable week view with today highlighted</li>
+                <li><strong>Streak Card</strong> - Compact single-line display of current and best streak</li>
+                <li><strong>Activity Cards</strong> - Modern card design with:
+                    <ul><li>Category emoji and color</li><li>Completion status indicator</li><li>Rating badge (1-10 stars)</li><li>Swipe to delete with chevron indicator</li><li>Goal indicator (🎯) for future activities</li></ul>
+                </li>
+                <li><strong>Quick Add Menu</strong> - Access recent activities for quick logging</li>
+                <li><strong>Floating Action Buttons</strong> - Add activity and quick add toggle</li>
+            </ul>
+            <h3>Statistics Screen</h3>
+            <ul>
+                <li><strong>Weekly View</strong> - Category breakdown with grouped activities</li>
+                <li><strong>Monthly View</strong> - Monthly statistics per category</li>
+                <li><strong>Yearly View</strong> - Annual overview with monthly breakdown</li>
+                <li><strong>Goal Progress</strong> - Visual progress indicators for weekly/monthly goals</li>
+                <li><strong>Trend Charts</strong> - Visual charts showing activity trends over time</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
