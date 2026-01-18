@@ -163,19 +163,35 @@ const DailyFlowScreen = () => {
 
   const saveRecentActivity = async (activity) => {
     try {
-      // Don't save completed activities to recent list
-      if (activity.isCompleted) return;
-
       const user = getCurrentUser();
+      
+      // If activity is completed, remove it from recent list
+      if (activity.isCompleted) {
+        const filteredRecent = recentActivities.filter(a => 
+          !(a.title === activity.title && a.type === activity.type)
+        );
+        setRecentActivities(filteredRecent);
+        
+        if (!user) {
+          await AsyncStorage.setItem('recentActivities', JSON.stringify(filteredRecent));
+        } else {
+          const userSpecificKey = `recentActivities_${user.uid}`;
+          await AsyncStorage.setItem(userSpecificKey, JSON.stringify(filteredRecent));
+        }
+        return;
+      }
+
+      // Don't save completed activities to recent list (already handled above, but keep for clarity)
+      // Save all non-completed activities (no limit)
       if (!user) {
         // Old format for non-logged-in users
-        const newRecent = [activity, ...recentActivities.filter(a => a.title !== activity.title)].slice(0, 5);
+        const newRecent = [activity, ...recentActivities.filter(a => a.title !== activity.title)];
         setRecentActivities(newRecent);
         await AsyncStorage.setItem('recentActivities', JSON.stringify(newRecent));
         return;
       }
 
-      const newRecent = [activity, ...recentActivities.filter(a => a.title !== activity.title)].slice(0, 5);
+      const newRecent = [activity, ...recentActivities.filter(a => a.title !== activity.title)];
       setRecentActivities(newRecent);
       const userSpecificKey = `recentActivities_${user.uid}`;
       await AsyncStorage.setItem(userSpecificKey, JSON.stringify(newRecent));
@@ -477,6 +493,11 @@ const DailyFlowScreen = () => {
         updatedActivities = activities.map(a =>
           a.id === editingActivity.id ? newActivity : a
         );
+        
+        // If activity is marked as completed, remove it from recent list
+        if (newActivity.isCompleted) {
+          saveRecentActivity(newActivity);
+        }
       } else {
         // Ekleme modu - Firebase'e ekle (eğer kullanıcı giriş yapmışsa)
         const user = getCurrentUser();
@@ -527,6 +548,12 @@ const DailyFlowScreen = () => {
 
       // Calculate streak asynchronously without blocking
       calculateStreak().catch(err => console.error('Streak calculation error:', err));
+      
+      // Close quick add popup if it was opened from quick add
+      if (isQuickAdd) {
+        setShowQuickAdd(false);
+      }
+      
       closeModal();
     } catch (error) {
       console.error('Firebase save error:', error);
